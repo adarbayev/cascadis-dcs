@@ -1,0 +1,40 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+backend/.venv/
+backend/build/
+*.egg-info/
+.vite/
+.playwright-cli/
+*.tsbuildinfo
+
+# Local application data
+*.db
+*.sqlite
+*.sqlite3
+backend/data/*.lock
+var/
+work/
+data/aqueduct/
+data/iea/
+
+# Frontend
+dashboard/node_modules/
+dashboard/dist/
+dashboard/coverage/
+dashboard/.vite/
+dashboard/vite.config.js
+dashboard/vite.config.d.ts
+
+# Browser QA
+output/playwright/

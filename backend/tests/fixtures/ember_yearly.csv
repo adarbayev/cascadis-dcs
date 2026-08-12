@@ -1,0 +1,7 @@
+Area,ISO 3 code,Year,Area type,Electricity source,Is aggregated source,Generation (TWh),Emissions intensity (gCO2e/kWh)
+United States,USA,2025,Country or economy,Demand,0,4200,999.0
+United States,USA,2025,Country or economy,Coal,0,700,820.0
+United States,USA,2024,Country or economy,Total generation,0,4200,383.81
+United States,USA,2025,Country or economy,Total generation,0,4300,384.403
+Germany,DEU,2025,Country or economy,Total generation,0,500,305.2
+United States,USA,2025,Region,Total generation,1,4300,777.0

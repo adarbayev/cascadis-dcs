@@ -1,0 +1,155 @@
+{
+  "version": "1.0.0",
+  "name": "Cascadis Data Center Sustainability Location Screening Policy",
+  "status": "internal_screening",
+  "default_weights": {
+    "water": 0.5,
+    "carbon": 0.5
+  },
+  "anchors": {
+    "carbon_gco2e_per_kwh": 800.0
+  },
+  "sensitivity_material_divergence_points": 10.0,
+  "carbon_bands": [
+    {
+      "id": "low",
+      "label": "Low carbon intensity",
+      "minimum_inclusive": 0.0,
+      "maximum_exclusive": 150.0
+    },
+    {
+      "id": "moderate",
+      "label": "Moderate carbon intensity",
+      "minimum_inclusive": 150.0,
+      "maximum_exclusive": 400.0
+    },
+    {
+      "id": "high",
+      "label": "High carbon intensity",
+      "minimum_inclusive": 400.0,
+      "maximum_exclusive": null
+    }
+  ],
+  "water_views": {
+    "baseline_water_stress": {
+      "label": "Baseline Water Stress",
+      "source_field": "bws_score",
+      "purpose": "Primary cooling-water screening view"
+    },
+    "default_overall": {
+      "label": "Default Overall Water Risk",
+      "source_field": "w_awr_def_tot_score",
+      "purpose": "WRI default overall-risk sensitivity view"
+    },
+    "electric_power": {
+      "label": "Electric Power Overall Water Risk",
+      "source_field": "w_awr_elp_tot_score",
+      "purpose": "Sector proxy sensitivity view; it is not a data-center preset"
+    },
+    "semiconductor": {
+      "label": "Semiconductor Overall Water Risk",
+      "source_field": "w_awr_smc_tot_score",
+      "purpose": "Sector proxy sensitivity view; it is not a data-center preset"
+    }
+  },
+  "cooling_matrix": {
+    "high_or_arid": {
+      "label": "Water-constrained location",
+      "preferred": [
+        "Water-minimising heat rejection",
+        "Closed-loop liquid cooling",
+        "Dry cooling systems"
+      ],
+      "conditional": [
+        "Adaptive hybrid cooling with a binding water budget",
+        "Evaporative mode limited to approved climate hours and water availability"
+      ],
+      "excluded": [
+        "Unconstrained evaporative cooling"
+      ]
+    },
+    "medium_high": {
+      "label": "Water-sensitive location",
+      "preferred": [
+        "Adaptive hybrid cooling",
+        "Dry-led heat rejection"
+      ],
+      "conditional": [
+        "Closed-loop liquid cooling after hydraulic and redundancy review",
+        "Evaporative operation within a verified annual water budget"
+      ],
+      "excluded": [
+        "Once-through water cooling"
+      ]
+    },
+    "low_high_carbon": {
+      "label": "Carbon-intensive grid with lower water constraint",
+      "preferred": [
+        "Cooling efficiency controls and airflow optimisation",
+        "High-efficiency hybrid cooling"
+      ],
+      "conditional": [
+        "Evaporative cooling after climate-hour and WUE assessment",
+        "Liquid cooling where IT density and lifecycle energy savings justify it"
+      ],
+      "excluded": [
+        "Cooling selections based on PUE alone"
+      ]
+    },
+    "low_low_or_moderate_carbon": {
+      "label": "Lower combined water and grid constraint",
+      "preferred": [
+        "Resilience-led cooling selection",
+        "Lifecycle-cost-optimised hybrid or dry cooling"
+      ],
+      "conditional": [
+        "Evaporative cooling after local water availability and WUE verification",
+        "Liquid cooling aligned with rack-density growth"
+      ],
+      "excluded": [
+        "Selection without engineering climate and redundancy checks"
+      ]
+    },
+    "unknown": {
+      "label": "Insufficient source data",
+      "preferred": [
+        "Obtain decision-grade water and grid-carbon evidence"
+      ],
+      "conditional": [
+        "Limit activity to reversible efficiency and metering measures"
+      ],
+      "excluded": [
+        "Irreversible cooling-system selection from incomplete screening data"
+      ]
+    }
+  },
+  "delivery_actions": {
+    "base_immediate": [
+      "Validate sub-metered cooling energy and water use",
+      "Run an hourly climate and cooling-load engineering study"
+    ],
+    "base_maintenance_window": [
+      "Inspect controls, containment, airflow and cooling-system setpoints"
+    ],
+    "no_outage_immediate": [
+      "Prioritise controls, containment and metering changes that preserve redundancy",
+      "Pilot changes on redundant capacity with an approved rollback procedure"
+    ],
+    "no_outage_maintenance_window": [
+      "Schedule intrusive retrofit work within an approved maintenance window"
+    ],
+    "constrained_cost_immediate": [
+      "Sequence low-disruption efficiency measures before staged capital work",
+      "Complete a commercial renewable power purchase agreement assessment"
+    ],
+    "high_growth_expansion": [
+      "Apply the preferred cooling architecture to planned capacity before retrofitting constrained live halls"
+    ]
+  },
+  "disclaimers": [
+    "This policy supports location screening and does not constitute a final cooling design.",
+    "Final design requires engineering checks for temperature, humidity, available power, hydraulics and redundancy.",
+    "Electric Power and Semiconductor Aqueduct views are proxy sensitivity views; WRI does not publish a Data Center sector preset.",
+    "A renewable power purchase agreement does not change the location-based grid factor or location-based CUE."
+  ]
+}
