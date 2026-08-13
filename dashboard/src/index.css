@@ -4,7 +4,7 @@
 
 :root {
   color-scheme: light;
-  font-family: "IBM Plex Sans Variable", "Helvetica Neue", "Segoe UI", sans-serif;
+  font-family: "Poppins", "Helvetica Neue", "Segoe UI", sans-serif;
   background: #ebe9df;
   color: #14211d;
   font-synthesis: none;
@@ -30,7 +30,7 @@ button { -webkit-tap-highlight-color: transparent; }
 
 .atlas-kicker {
   font-size: 0.66rem;
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: 0.1em;
   line-height: 1.25;
   text-transform: uppercase;
@@ -87,7 +87,7 @@ input[type="range"]::-moz-range-thumb {
   cursor: pointer;
 }
 
-.leaflet-container { font-family: "IBM Plex Sans Variable", "Helvetica Neue", sans-serif; background: #d8ddd8; }
+.leaflet-container { font-family: "Poppins", "Helvetica Neue", "Segoe UI", sans-serif; background: #d8ddd8; }
 .atlas-map {
   background-image:
     linear-gradient(rgba(20, 33, 29, 0.035) 1px, transparent 1px),
