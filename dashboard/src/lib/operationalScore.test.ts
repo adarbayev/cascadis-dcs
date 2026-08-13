@@ -43,6 +43,46 @@ describe("operational scenario score", () => {
     expect(profileMatchesFilters(result, profile, { ...DEFAULT_PORTFOLIO_FILTERS, cue_min: (profile.cue.value as number) + 0.01 }, "bws")).toBe(false);
   });
 
+  it("filters by Baseline Water Stress independently of the selected WRI view", () => {
+    const result = assessmentFixture();
+    const baselineProfile = buildOperationalProfile(result, DEFAULT_OPERATIONAL_SCENARIO, "bws");
+    const defaultRiskProfile = buildOperationalProfile(result, DEFAULT_OPERATIONAL_SCENARIO, "default");
+
+    expect(profileMatchesFilters(result, baselineProfile, { ...DEFAULT_PORTFOLIO_FILTERS, water_stress: "extremely_high" }, "bws")).toBe(true);
+    expect(profileMatchesFilters(result, baselineProfile, { ...DEFAULT_PORTFOLIO_FILTERS, water_stress: "high" }, "bws")).toBe(false);
+    expect(profileMatchesFilters(result, defaultRiskProfile, { ...DEFAULT_PORTFOLIO_FILTERS, water_stress: "extremely_high" }, "default")).toBe(true);
+    expect(profileMatchesFilters(result, defaultRiskProfile, { ...DEFAULT_PORTFOLIO_FILTERS, water_stress: "high" }, "default")).toBe(false);
+  });
+
+  it("keeps arid and no-data water categories explicit", () => {
+    const arid = assessmentFixture({ assessment_id: "arid" });
+    arid.policy_v1!.scores!.sensitivity!.baseline_water_stress = {
+      source_score: 5,
+      source_category: -1,
+      source_label: "Arid and Low Water Use",
+      normalized: 1,
+      environmental_priority: 72,
+      status: "arid_policy_override",
+    };
+    const aridProfile = buildOperationalProfile(arid, DEFAULT_OPERATIONAL_SCENARIO, "bws");
+    expect(profileMatchesFilters(arid, aridProfile, { ...DEFAULT_PORTFOLIO_FILTERS, water_stress: "arid" }, "bws")).toBe(true);
+    expect(profileMatchesFilters(arid, aridProfile, { ...DEFAULT_PORTFOLIO_FILTERS, water_stress: "extremely_high" }, "bws")).toBe(false);
+
+    const noData = assessmentFixture({ assessment_id: "no-data" });
+    noData.policy_v1!.scores!.sensitivity!.baseline_water_stress = {
+      source_score: null,
+      source_category: null,
+      source_label: "No Data",
+      normalized: null,
+      environmental_priority: null,
+      status: "no_data",
+    };
+    const noDataProfile = buildOperationalProfile(noData, DEFAULT_OPERATIONAL_SCENARIO, "bws");
+    expect(profileMatchesFilters(noData, noDataProfile, { ...DEFAULT_PORTFOLIO_FILTERS, water_stress: "no_data" }, "bws")).toBe(true);
+    expect(profileMatchesFilters(noData, noDataProfile, { ...DEFAULT_PORTFOLIO_FILTERS, water_stress: "extremely_high" }, "bws")).toBe(false);
+    expect(profileMatchesFilters(noData, noDataProfile, { ...DEFAULT_PORTFOLIO_FILTERS, water_stress: "no_data", include_unscored: false }, "bws")).toBe(false);
+  });
+
   it("uses published Google PUE matches and keeps generic fallbacks as assumptions", () => {
     const google = assessmentFixture();
     google.site.id = "google-dc-usa-mesa-arizona";

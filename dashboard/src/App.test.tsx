@@ -44,6 +44,26 @@ describe("dashboard shell", () => {
     expect(await screen.findByText("No locations assessed yet")).toBeInTheDocument();
   });
 
+  it("separates overview filters from scoring methodology controls", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    expect(await screen.findByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByLabelText("PUE minimum")).toBeInTheDocument();
+    expect(screen.getByTestId("portfolio-map")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Fallback PUE")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Scoring methodology" }));
+    expect(screen.getByRole("tab", { name: "Scoring methodology" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByLabelText("Fallback PUE")).toBeInTheDocument();
+    expect(screen.getByLabelText("WRI water view")).toBeInTheDocument();
+    expect(screen.queryByLabelText("PUE minimum")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("portfolio-map")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Overview" }));
+    expect(screen.getByLabelText("PUE minimum")).toBeInTheDocument();
+    expect(screen.getByTestId("portfolio-map")).toBeInTheDocument();
+  });
+
   it("queues a validated manual site without fabricating a result", async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -136,5 +156,33 @@ describe("dashboard shell", () => {
     expect(screen.getAllByText("At threshold").length).toBeGreaterThan(1);
     const locationsInView = screen.getByText("Locations in view");
     expect(within(locationsInView.parentElement!).getByText("2")).toBeInTheDocument();
+  });
+
+  it("filters the map and portfolio by Baseline Water Stress level", async () => {
+    const extreme = assessmentFixture({ assessment_id: "extreme-water" });
+    extreme.site = { ...extreme.site, id: "extreme-water", name: "Extreme water" };
+    const low = assessmentFixture({ assessment_id: "low-water" });
+    low.site = { ...low.site, id: "low-water", name: "Low water" };
+    low.policy_v1!.scores!.sensitivity!.baseline_water_stress!.source_category = 0;
+    low.policy_v1!.scores!.sensitivity!.baseline_water_stress!.source_score = 0;
+    low.policy_v1!.scores!.sensitivity!.baseline_water_stress!.source_label = "Low (<10%)";
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/portfolio")) return jsonResponse({ count: 2, assessments: [extreme, low] });
+      if (url.endsWith("/sources/status")) return jsonResponse({ checked_at: "2026-08-13T12:00:00Z", sources: [] });
+      if (url.endsWith("/policy")) return jsonResponse({ version: "1.0.0", default_weights: { water: 0.5, carbon: 0.5 }, anchors: { carbon_gco2e_per_kwh: 800 } });
+      return jsonResponse({ detail: "Not found" }, 404);
+    }));
+
+    const user = userEvent.setup();
+    render(<App />);
+    const map = await screen.findByTestId("portfolio-map");
+    await waitFor(() => expect(map).toHaveAttribute("data-count", "2"));
+    await user.selectOptions(screen.getByLabelText("Baseline water stress level"), "extremely_high");
+
+    await waitFor(() => expect(map).toHaveAttribute("data-count", "1"));
+    expect(within(map).getByText("Extreme water")).toBeInTheDocument();
+    expect(within(map).queryByText("Low water")).not.toBeInTheDocument();
+    expect(screen.queryAllByText("Low water")).toHaveLength(0);
   });
 });

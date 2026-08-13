@@ -7,7 +7,7 @@ import type {
   PortfolioFilters,
   SensitivityView,
 } from "../types";
-import { environmentalScore, gridFactor, gridSource, waterScore } from "./assessment";
+import { environmentalScore, gridFactor, gridSource, waterCategory, waterScore } from "./assessment";
 import { googlePueForSite } from "./googlePue";
 
 export const DEFAULT_OPERATIONAL_SCENARIO: OperationalScenario = {
@@ -36,6 +36,7 @@ export const DEFAULT_PORTFOLIO_FILTERS: PortfolioFilters = {
   wue_max: null,
   cue_min: null,
   cue_max: null,
+  water_stress: "all",
   include_unscored: true,
 };
 
@@ -178,5 +179,17 @@ export function profileMatchesFilters(
   if (filters.wue_max !== null && (profile.wue.value === null || profile.wue.value > filters.wue_max)) return false;
   if (filters.cue_min !== null && (profile.cue.value === null || profile.cue.value < filters.cue_min)) return false;
   if (filters.cue_max !== null && (profile.cue.value === null || profile.cue.value > filters.cue_max)) return false;
+  if (filters.water_stress !== "all") {
+    const categories = {
+      arid: -1,
+      low: 0,
+      low_medium: 1,
+      medium_high: 2,
+      high: 3,
+      extremely_high: 4,
+    } as const;
+    const category = waterCategory(result, "bws");
+    if (filters.water_stress === "no_data" ? category !== null : category !== categories[filters.water_stress]) return false;
+  }
   return true;
 }
