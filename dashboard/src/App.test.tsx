@@ -5,7 +5,11 @@ import App from "./App";
 import { assessmentFixture, googleLocationEvidence } from "./test/fixtures";
 
 vi.mock("./components/PortfolioMap", () => ({
-  PortfolioMap: () => <div data-testid="portfolio-map">Map</div>,
+  PortfolioMap: ({ results }: { results: Array<{ assessment_id: string; site: { name: string } }> }) => (
+    <div data-count={results.length} data-testid="portfolio-map">
+      {results.map((result) => <span key={result.assessment_id}>{result.site.name}</span>)}
+    </div>
+  ),
 }));
 
 const jsonResponse = (body: unknown, status = 200) =>
@@ -101,5 +105,36 @@ describe("dashboard shell", () => {
     expect(screen.getByRole("button", { name: /Google public locations 1/i })).toHaveAttribute("data-active", "true");
     expect(screen.getAllByText("Mesa, Arizona").length).toBeGreaterThan(0);
     expect(screen.queryByText("User site")).not.toBeInTheDocument();
+  });
+
+  it("uses an inclusive PUE minimum across the map, summary, and portfolio table", async () => {
+    const below = assessmentFixture({ assessment_id: "below-pue" });
+    below.site = { ...below.site, id: "below-pue", name: "Below threshold", pue: 1.49 };
+    const boundary = assessmentFixture({ assessment_id: "boundary-pue" });
+    boundary.site = { ...boundary.site, id: "boundary-pue", name: "At threshold", pue: 1.5 };
+    const above = assessmentFixture({ assessment_id: "above-pue" });
+    above.site = { ...above.site, id: "above-pue", name: "Above threshold", pue: 1.65 };
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/portfolio")) return jsonResponse({ count: 3, assessments: [below, boundary, above] });
+      if (url.endsWith("/sources/status")) return jsonResponse({ checked_at: "2026-08-13T12:00:00Z", sources: [] });
+      if (url.endsWith("/policy")) return jsonResponse({ version: "1.0.0", default_weights: { water: 0.5, carbon: 0.5 }, anchors: { carbon_gco2e_per_kwh: 800 } });
+      return jsonResponse({ detail: "Not found" }, 404);
+    }));
+
+    const user = userEvent.setup();
+    render(<App />);
+    const map = await screen.findByTestId("portfolio-map");
+    await waitFor(() => expect(map).toHaveAttribute("data-count", "3"));
+    await user.type(screen.getByLabelText("PUE minimum"), "1.5");
+
+    await waitFor(() => expect(map).toHaveAttribute("data-count", "2"));
+    expect(within(map).queryByText("Below threshold")).not.toBeInTheDocument();
+    expect(within(map).getByText("At threshold")).toBeInTheDocument();
+    expect(within(map).getByText("Above threshold")).toBeInTheDocument();
+    expect(screen.queryAllByText("Below threshold")).toHaveLength(0);
+    expect(screen.getAllByText("At threshold").length).toBeGreaterThan(1);
+    const locationsInView = screen.getByText("Locations in view");
+    expect(within(locationsInView.parentElement!).getByText("2")).toBeInTheDocument();
   });
 });

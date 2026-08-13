@@ -76,7 +76,7 @@ facility_gap = 0.5 × pue_gap + 0.5 × wue_gap
 composite = 100 × (0.30 × facility_gap + 0.40 × WRI/5 + 0.30 × grid/800)
 ```
 
-The anchors and weights are internal scenario settings. Published Google PUE/WUE proxies are currently below the internal intervention thresholds, so the default facility-gap contribution is zero; changing a scenario value above a threshold makes the facility term active. Filters support minimum and maximum exposure/composite scores plus maximum PUE, WUE, and CUE.
+The anchors and weights are internal scenario settings. Published Google PUE/WUE proxies are currently below the internal intervention thresholds, so the default facility-gap contribution is zero; changing a scenario value above a threshold makes the facility term active. Filters support inclusive minimum and maximum bounds for exposure, composite score, PUE, WUE, and CUE. The same filtered set drives the map, summary, portfolio table, comparison queue, and exports.
 
 ## CSV input
 

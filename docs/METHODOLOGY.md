@@ -86,6 +86,8 @@ CUE location proxy (kgCO2e/kWh IT) = PUE × grid factor (gCO2e/kWh) / 1000
 
 CUE is displayed and filterable without a direct composite weight. A CUE term alongside PUE and grid intensity would repeat the same energy and carbon drivers. Under the default Google proxies, both facility metrics fall below the intervention thresholds, which makes the default facility-gap component zero. Higher user assumptions or site inputs activate the component.
 
+Portfolio metric filters use inclusive bounds. For example, a PUE minimum of `1.50` retains locations with PUE greater than or equal to `1.50`. Map markers, dashboard summaries, table rows, comparisons, and exports are derived from the same filtered portfolio.
+
 The score supports portfolio screening under explicit stakeholder weights. It is not an industry-standard sustainability rating. Decision review should retain the component values, active weights, evidence basis, hard water gate, and sensitivity results.
 
 ## Google framework alignment

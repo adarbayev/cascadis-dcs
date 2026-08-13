@@ -34,7 +34,13 @@ describe("operational scenario score", () => {
     const profile = buildOperationalProfile(result, DEFAULT_OPERATIONAL_SCENARIO);
     expect(profileMatchesFilters(result, profile, DEFAULT_PORTFOLIO_FILTERS, "bws")).toBe(true);
     expect(profileMatchesFilters(result, profile, { ...DEFAULT_PORTFOLIO_FILTERS, exposure_max: 50 }, "bws")).toBe(false);
+    expect(profileMatchesFilters(result, profile, { ...DEFAULT_PORTFOLIO_FILTERS, pue_min: 1.62 }, "bws")).toBe(true);
+    expect(profileMatchesFilters(result, profile, { ...DEFAULT_PORTFOLIO_FILTERS, pue_min: 1.63 }, "bws")).toBe(false);
     expect(profileMatchesFilters(result, profile, { ...DEFAULT_PORTFOLIO_FILTERS, pue_max: 1.4 }, "bws")).toBe(false);
+    expect(profileMatchesFilters(result, profile, { ...DEFAULT_PORTFOLIO_FILTERS, wue_min: 0.4, wue_max: 0.4 }, "bws")).toBe(true);
+    expect(profileMatchesFilters(result, profile, { ...DEFAULT_PORTFOLIO_FILTERS, wue_min: 0.41 }, "bws")).toBe(false);
+    expect(profileMatchesFilters(result, profile, { ...DEFAULT_PORTFOLIO_FILTERS, cue_min: profile.cue.value }, "bws")).toBe(true);
+    expect(profileMatchesFilters(result, profile, { ...DEFAULT_PORTFOLIO_FILTERS, cue_min: (profile.cue.value as number) + 0.01 }, "bws")).toBe(false);
   });
 
   it("uses published Google PUE matches and keeps generic fallbacks as assumptions", () => {

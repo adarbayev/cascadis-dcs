@@ -592,7 +592,7 @@ function App() {
             <section className="atlas-panel px-6 py-14 text-center">
               <MapPinned size={24} className="mx-auto text-tide" />
               <h2 className="mt-4 font-display text-2xl text-ink">{results.length ? "No locations match this view" : "No locations assessed yet"}</h2>
-              <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-500">{results.length ? "Clear the search, status, or score filters, or choose another portfolio scope." : "Click the map or open Add location to build a source-backed assessment."}</p>
+              <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-500">{results.length ? "Clear the search, status, or metric bounds, or choose another portfolio scope." : "Click the map or open Add location to build a source-backed assessment."}</p>
               {!results.length && !isStaticMode ? <button type="button" onClick={() => setIntakeOpen(true)} className="mt-5 border border-ink bg-ink px-4 py-2.5 text-xs font-semibold text-white hover:bg-tide">Add first location</button> : null}
             </section>
           )}

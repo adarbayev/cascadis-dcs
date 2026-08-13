@@ -43,6 +43,10 @@ export function ScenarioControls({
   };
   const invalidExposureRange = filters.exposure_min > filters.exposure_max;
   const invalidCompositeRange = filters.composite_min > filters.composite_max;
+  const invalidPueRange = filters.pue_min !== null && filters.pue_max !== null && filters.pue_min > filters.pue_max;
+  const invalidWueRange = filters.wue_min !== null && filters.wue_max !== null && filters.wue_min > filters.wue_max;
+  const invalidCueRange = filters.cue_min !== null && filters.cue_max !== null && filters.cue_min > filters.cue_max;
+  const invalidRange = invalidExposureRange || invalidCompositeRange || invalidPueRange || invalidWueRange || invalidCueRange;
 
   return (
     <section className="mt-5 border-y atlas-rule bg-paper/80 px-4 py-5 sm:px-5" aria-label="Operational scenario and portfolio filters">
@@ -117,15 +121,19 @@ export function ScenarioControls({
             <label className="text-xs font-semibold text-slate-600">Exposure max<input aria-label="Exposure maximum" type="number" min="0" max="100" step="1" value={filters.exposure_max} onChange={(event) => onFiltersChange({ ...filters, exposure_max: boundedNumber(event.target.value, filters.exposure_max, 0, 100) })} className={numericInput} /></label>
             <label className="text-xs font-semibold text-slate-600">Composite min<input aria-label="Composite minimum" type="number" min="0" max="100" step="1" value={filters.composite_min} onChange={(event) => onFiltersChange({ ...filters, composite_min: boundedNumber(event.target.value, filters.composite_min, 0, 100) })} className={numericInput} /></label>
             <label className="text-xs font-semibold text-slate-600">Composite max<input aria-label="Composite maximum" type="number" min="0" max="100" step="1" value={filters.composite_max} onChange={(event) => onFiltersChange({ ...filters, composite_max: boundedNumber(event.target.value, filters.composite_max, 0, 100) })} className={numericInput} /></label>
-            <label className="text-xs font-semibold text-slate-600">PUE max<input aria-label="PUE maximum" type="number" min="1" max="3" step="0.01" value={filters.pue_max ?? ""} placeholder="Any" onChange={(event) => onFiltersChange({ ...filters, pue_max: boundedNumberOrNull(event.target.value, 1, 3) })} className={numericInput} /></label>
-            <label className="text-xs font-semibold text-slate-600">WUE max<input aria-label="WUE maximum" type="number" min="0" max="10" step="0.05" value={filters.wue_max ?? ""} placeholder="Any" onChange={(event) => onFiltersChange({ ...filters, wue_max: boundedNumberOrNull(event.target.value, 0, 10) })} className={numericInput} /></label>
-            <label className="col-span-2 text-xs font-semibold text-slate-600">CUE max<input aria-label="CUE maximum" type="number" min="0" max="5" step="0.01" value={filters.cue_max ?? ""} placeholder="Any" onChange={(event) => onFiltersChange({ ...filters, cue_max: boundedNumberOrNull(event.target.value, 0, 5) })} className={numericInput} /></label>
+            <p className="col-span-2 mt-1 text-[11px] leading-4 text-slate-500">Metric bounds use the effective scenario values shown in the portfolio. Minimum means at least (≥); maximum means at most (≤). Leave a bound blank for any value.</p>
+            <label className="text-xs font-semibold text-slate-600">PUE min · ≥<input aria-label="PUE minimum" type="number" min="1" max="3" step="0.01" value={filters.pue_min ?? ""} placeholder="Any" onChange={(event) => onFiltersChange({ ...filters, pue_min: boundedNumberOrNull(event.target.value, 1, 3) })} className={numericInput} /></label>
+            <label className="text-xs font-semibold text-slate-600">PUE max · ≤<input aria-label="PUE maximum" type="number" min="1" max="3" step="0.01" value={filters.pue_max ?? ""} placeholder="Any" onChange={(event) => onFiltersChange({ ...filters, pue_max: boundedNumberOrNull(event.target.value, 1, 3) })} className={numericInput} /></label>
+            <label className="text-xs font-semibold text-slate-600">WUE min · ≥<input aria-label="WUE minimum" type="number" min="0" max="10" step="0.05" value={filters.wue_min ?? ""} placeholder="Any" onChange={(event) => onFiltersChange({ ...filters, wue_min: boundedNumberOrNull(event.target.value, 0, 10) })} className={numericInput} /></label>
+            <label className="text-xs font-semibold text-slate-600">WUE max · ≤<input aria-label="WUE maximum" type="number" min="0" max="10" step="0.05" value={filters.wue_max ?? ""} placeholder="Any" onChange={(event) => onFiltersChange({ ...filters, wue_max: boundedNumberOrNull(event.target.value, 0, 10) })} className={numericInput} /></label>
+            <label className="text-xs font-semibold text-slate-600">CUE min · ≥<input aria-label="CUE minimum" type="number" min="0" max="5" step="0.01" value={filters.cue_min ?? ""} placeholder="Any" onChange={(event) => onFiltersChange({ ...filters, cue_min: boundedNumberOrNull(event.target.value, 0, 5) })} className={numericInput} /></label>
+            <label className="text-xs font-semibold text-slate-600">CUE max · ≤<input aria-label="CUE maximum" type="number" min="0" max="5" step="0.01" value={filters.cue_max ?? ""} placeholder="Any" onChange={(event) => onFiltersChange({ ...filters, cue_max: boundedNumberOrNull(event.target.value, 0, 5) })} className={numericInput} /></label>
             <label className="col-span-2 flex items-center gap-2 text-[11px] font-semibold text-slate-600">
               <input aria-label="Include unscored locations" type="checkbox" checked={filters.include_unscored} onChange={(event) => onFiltersChange({ ...filters, include_unscored: event.target.checked })} />
               Include unscored locations when score bounds are unchanged
             </label>
           </div>
-          {invalidExposureRange || invalidCompositeRange ? <p role="alert" className="mt-2 text-[11px] font-semibold text-red-700">Minimum score must not exceed maximum score.</p> : null}
+          {invalidRange ? <p role="alert" className="mt-2 text-[11px] font-semibold text-red-700">Each minimum must be at or below its corresponding maximum.</p> : null}
         </fieldset>
       </div>
     </section>
