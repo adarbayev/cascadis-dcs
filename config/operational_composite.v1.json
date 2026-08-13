@@ -1,0 +1,49 @@
+{
+  "version": "1.0.0",
+  "name": "Cascadis Operational Composite Scenario Policy",
+  "status": "internal_screening",
+  "direction": "higher_is_higher_intervention_priority",
+  "default_assumptions": {
+    "pue": 1.09,
+    "pue_basis": "Google 2025 fleet-wide proxy",
+    "wue_l_per_kwh": 1.15,
+    "wue_basis": "Google 2024 ISO WUE Category 2 fleet proxy for data centers supporting LLM models",
+    "fixed_cue_kgco2e_per_kwh_it": null
+  },
+  "default_weights": {
+    "facility_efficiency": 0.3,
+    "water_stress": 0.4,
+    "grid_carbon": 0.3
+  },
+  "anchors": {
+    "pue_target": 1.4,
+    "pue_upper": 2.0,
+    "wue_target_l_per_kwh": 1.5,
+    "wue_upper_l_per_kwh": 3.0,
+    "grid_gco2e_per_kwh": 800.0
+  },
+  "formula": {
+    "pue_gap": "clamp((PUE - 1.40) / (2.00 - 1.40), 0, 1)",
+    "wue_gap": "clamp((WUE - 1.50) / (3.00 - 1.50), 0, 1)",
+    "facility_efficiency": "0.5 * pue_gap + 0.5 * wue_gap",
+    "water_stress": "selected_WRI_score / 5",
+    "grid_carbon": "clamp(grid_gCO2e_per_kWh / 800, 0, 1)",
+    "composite_priority": "100 * (facility_weight * facility_efficiency + water_weight * water_stress + grid_weight * grid_carbon)",
+    "cue_location_based": "PUE * grid_gCO2e_per_kWh / 1000"
+  },
+  "methodology_notes": [
+    "PUE and WUE targets and upper anchors are internal screening values, not industry standards.",
+    "CUE is displayed and filterable but receives no direct composite weight because it already contains PUE and grid intensity.",
+    "Missing site metrics use explicit editable proxies and retain their evidence basis."
+  ],
+  "sources": [
+    {
+      "title": "Google Data Centers efficiency — 2026 Q1 PUE report",
+      "url": "https://datacenters.google/intl/en/efficiency/"
+    },
+    {
+      "title": "Measuring the environmental impact of delivering AI at Google Scale",
+      "url": "https://services.google.com/fh/files/misc/measuring_the_environmental_impact_of_delivering_ai_at_google_scale.pdf"
+    }
+  ]
+}

@@ -35,6 +35,15 @@ The dashboard uses the `world-atlas` package, derived from [Natural Earth](https
 
 Official Google announcements are retained per row where they provide a more specific development phase. Google source names and statuses are used for identification and provenance. Aqueduct and Ember outputs, tool scenario defaults, and Location Exposure Scores are independently derived and do not imply Google endorsement.
 
+## Google operating-metric proxies
+
+- PUE source: [Google Data Centers efficiency — 2026 Q1 report](https://datacenters.google/intl/en/efficiency/).
+- WUE source: [Measuring the environmental impact of delivering AI at Google Scale](https://services.google.com/fh/files/misc/measuring_the_environmental_impact_of_delivering_ai_at_google_scale.pdf).
+
+The dashboard matches current PUE records to public locations only where the facility identity is sufficiently clear. Multi-facility locations use the disclosed maximum and retain the facility range in the evidence detail. Unmatched Google rows use the published 2025 fleet PUE of 1.09 as an editable fleet proxy.
+
+Google does not publish a site-level WUE table covering the portfolio. The editable 1.15 L/kWh default is the 2024 ISO WUE Category 2 consumptive-use value reported for Google data centers supporting LLM models. The application labels the value as a fleet proxy and never as a site observation. CUE is independently derived from effective PUE and Ember's national location-based proxy; it is not a Google-reported CUE.
+
 ## OpenStreetMap Nominatim coordinate proxies
 
 - Service: [Nominatim](https://nominatim.openstreetmap.org/).

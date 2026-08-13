@@ -1,5 +1,5 @@
 import { AlertTriangle, ArrowDown, Check, GitCompareArrows } from "lucide-react";
-import type { AssessmentResult, SensitivityView } from "../types";
+import type { AssessmentResult, OperationalProfile, RankingMetric, SensitivityView } from "../types";
 import {
   countryName,
   decision,
@@ -21,6 +21,8 @@ interface PortfolioTableProps {
   view: SensitivityView;
   compareIds: string[];
   onToggleCompare: (id: string) => void;
+  profiles: Map<string, OperationalProfile>;
+  rankingMetric: RankingMetric;
 }
 
 const bandClass = {
@@ -38,13 +40,18 @@ export function PortfolioTable({
   view,
   compareIds,
   onToggleCompare,
+  profiles,
+  rankingMetric,
 }: PortfolioTableProps) {
   const rankingBlocked = hasMixedGridBasis(results, view);
+  const rankingScore = (result: AssessmentResult): number | null => rankingMetric === "composite"
+    ? profiles.get(result.assessment_id)?.composite_score ?? null
+    : environmentalScore(result, view);
   const ranked = rankingBlocked
     ? [...results]
     : [...results].sort((first, second) => {
-        const a = environmentalScore(first, view);
-        const b = environmentalScore(second, view);
+        const a = rankingScore(first);
+        const b = rankingScore(second);
         if (a === null && b === null) return first.site.name.localeCompare(second.site.name);
         if (a === null) return 1;
         if (b === null) return -1;
@@ -54,7 +61,7 @@ export function PortfolioTable({
   let previousScore: number | null = null;
   let previousRank = 0;
   ranked.forEach((result, index) => {
-    const score = environmentalScore(result, view);
+    const score = rankingScore(result);
     if (rankingBlocked || score === null) {
       displayRanks.set(result.assessment_id, null);
       return;
@@ -70,8 +77,8 @@ export function PortfolioTable({
       <div className="flex flex-col gap-3 border-b atlas-rule px-5 py-5 sm:flex-row sm:items-end sm:justify-between sm:px-6">
         <div>
           <p className="atlas-kicker text-tide">Decision queue / portfolio ledger</p>
-          <h2 className="mt-2 font-display text-3xl leading-none text-ink">Exposure ranking</h2>
-          <p className="mt-1 text-sm text-slate-500">Location Exposure Score supports screening; the cooling matrix applies the water gate. Select a row for detail.</p>
+          <h2 className="mt-2 font-display text-3xl leading-none text-ink">{rankingMetric === "composite" ? "Sustainability composite ranking" : "Location exposure ranking"}</h2>
+          <p className="mt-1 text-sm text-slate-500">{rankingMetric === "composite" ? "Scenario facility gaps, WRI water stress, and grid carbon drive this ranking." : "Location Exposure Score combines WRI water and national grid carbon."} Select a row for detail.</p>
         </div>
         <span className="flex items-center gap-2 text-xs font-bold text-slate-500">
           <GitCompareArrows size={15} className="text-tide" /> {compareIds.length}/3 selected
@@ -86,11 +93,13 @@ export function PortfolioTable({
       ) : null}
 
       <div className="hidden overflow-x-auto md:block">
-        <table className="w-full min-w-[920px] border-collapse text-left">
+        <table className="w-full min-w-[1260px] border-collapse text-left">
           <thead>
             <tr className="border-b border-slate-100 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">
               <th className="px-6 py-3">{rankingBlocked ? "Input order / site" : "Rank / site"}</th>
-              <th className="px-4 py-3">Exposure {!rankingBlocked ? <ArrowDown size={12} className="inline" /> : null}</th>
+              <th className="px-4 py-3">Composite {rankingMetric === "composite" && !rankingBlocked ? <ArrowDown size={12} className="inline" /> : null}</th>
+              <th className="px-4 py-3">Exposure {rankingMetric === "exposure" && !rankingBlocked ? <ArrowDown size={12} className="inline" /> : null}</th>
+              <th className="px-4 py-3">PUE / WUE / CUE</th>
               <th className="px-4 py-3">Water view</th>
               <th className="px-4 py-3">Grid carbon</th>
               <th className="px-4 py-3">Decision cell</th>
@@ -99,8 +108,10 @@ export function PortfolioTable({
           </thead>
           <tbody>
             {ranked.map((result, index) => {
-              const score = environmentalScore(result, view);
-              const band = priorityBand(score);
+              const exposure = environmentalScore(result, view);
+              const profile = profiles.get(result.assessment_id);
+              const score = profile?.composite_score ?? null;
+              const compositeClass = score === null ? bandClass.unscored : "border-ink/25 bg-paper text-ink";
               const water = waterScore(result, view);
               const factor = gridFactor(result);
               const grid = gridSource(result);
@@ -126,9 +137,17 @@ export function PortfolioTable({
                     </div>
                   </td>
                   <td className="px-4 py-4">
-                    <span className={`atlas-marker-index inline-flex border px-2.5 py-1 text-xs font-semibold ${bandClass[band]}`}>
+                    <span className={`atlas-marker-index inline-flex border px-2.5 py-1 text-xs font-semibold ${compositeClass}`}>
                       {formatNumber(score, 0)}
                     </span>
+                  </td>
+                  <td className="px-4 py-4">
+                    <p className="atlas-marker-index text-sm font-bold text-ink">{formatNumber(exposure, 0)}</p>
+                    <p className="mt-0.5 text-[10px] text-slate-500">Location score</p>
+                  </td>
+                  <td className="px-4 py-4">
+                    <p className="atlas-marker-index whitespace-nowrap text-xs font-semibold text-ink">{formatNumber(profile?.pue.value ?? null, 2)} / {formatNumber(profile?.wue.value ?? null, 2)} / {formatNumber(profile?.cue.value ?? null, 2)}</p>
+                    <p className="mt-0.5 text-[10px] text-slate-500">ratio · L/kWh · kgCO₂e/kWh</p>
                   </td>
                   <td className="px-4 py-4">
                     <p className="text-sm font-bold text-ink">{water === null ? "Not available" : formatNumber(water, 2)}</p>
@@ -170,8 +189,12 @@ export function PortfolioTable({
 
       <div className="space-y-3 p-4 md:hidden">
         {ranked.map((result, index) => {
-          const score = environmentalScore(result, view);
-          const band = priorityBand(score);
+          const exposure = environmentalScore(result, view);
+          const profile = profiles.get(result.assessment_id);
+          const score = profile?.composite_score ?? null;
+          const scoreClass = rankingMetric === "composite"
+            ? score === null ? bandClass.unscored : "border-ink/25 bg-paper text-ink"
+            : bandClass[priorityBand(exposure)];
           const isCompared = compareIds.includes(result.assessment_id);
           return (
             <button
@@ -188,10 +211,11 @@ export function PortfolioTable({
                   <p className="mt-1 truncate font-bold text-ink">{result.site.name}</p>
                   <p className="mt-1 text-xs text-slate-500">{countryName(result) ?? "Country unresolved"}</p>
                 </div>
-                <span className={`atlas-marker-index border px-2.5 py-1 text-xs font-semibold ${bandClass[band]}`}>
-                  {formatNumber(score, 0)}
+                <span className={`atlas-marker-index border px-2.5 py-1 text-xs font-semibold ${scoreClass}`}>
+                  {formatNumber(rankingMetric === "composite" ? score : exposure, 0)}
                 </span>
               </div>
+              <p className="mt-3 atlas-marker-index text-xs text-slate-600">Composite {formatNumber(score, 0)} · Exposure {formatNumber(exposure, 0)} · PUE {formatNumber(profile?.pue.value ?? null, 2)} · WUE {formatNumber(profile?.wue.value ?? null, 2)} · CUE {formatNumber(profile?.cue.value ?? null, 2)}</p>
               <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
                 <p className="text-xs text-slate-500">{waterLabel(result, view) ?? "Water unavailable"}</p>
                 <span

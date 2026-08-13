@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+import json
 from typing import Any, Literal
 
 from fastapi import FastAPI, HTTPException, Query, Request
@@ -33,6 +34,9 @@ def create_app(
     database = Database(resolved_settings.db_path)
     database.initialize()
     policy = DecisionPolicy(resolved_settings.decision_policy_path)
+    operational_policy = json.loads(
+        resolved_settings.operational_policy_path.read_text(encoding="utf-8")
+    )
     resolved_water_provider = water_provider or AqueductEsriProvider(
         resolved_settings, database
     )
@@ -109,7 +113,7 @@ def create_app(
 
     @app.get(f"{prefix}/policy", response_model=dict[str, Any])
     async def get_policy() -> dict[str, Any]:
-        return policy.document
+        return {**policy.document, "operational_composite": operational_policy}
 
     @app.get(f"{prefix}/sources/status", response_model=SourcesStatusResponse)
     async def get_sources_status() -> SourcesStatusResponse:

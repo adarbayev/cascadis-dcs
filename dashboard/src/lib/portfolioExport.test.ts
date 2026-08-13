@@ -21,8 +21,8 @@ describe("portfolio CSV ranking guard", () => {
     second.source!.grid!.factor_basis = "country production emissions";
 
     const lines = buildPortfolioCsv([first, second], "bws").split("\n");
-    expect(lines[1].startsWith(",first-site,First input,")).toBe(true);
-    expect(lines[2].startsWith(",second-site,Second input,")).toBe(true);
+    expect(lines[1].startsWith(",exposure,,first-site,First input,")).toBe(true);
+    expect(lines[2].startsWith(",exposure,,second-site,Second input,")).toBe(true);
   });
 
   it("keeps score ordering and numeric ranks for a single basis", () => {
@@ -34,8 +34,8 @@ describe("portfolio CSV ranking guard", () => {
     setPriority(higher, 90);
 
     const lines = buildPortfolioCsv([lower, higher], "bws").split("\n");
-    expect(lines[1].startsWith("1,higher-site,")).toBe(true);
-    expect(lines[2].startsWith("2,lower-site,")).toBe(true);
+    expect(lines[1].startsWith("1,exposure,,higher-site,")).toBe(true);
+    expect(lines[2].startsWith("2,exposure,,lower-site,")).toBe(true);
   });
 
   it("exports curated location provenance", () => {

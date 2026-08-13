@@ -21,7 +21,15 @@ The seed is append-only and idempotent. Stable `google-dc-*` IDs are checked dir
 
 The unit of analysis is a Google public **location**, which can contain more than one physical facility. `Ellis County, Texas` is excluded as an aggregate alias of Midlothian and Red Oak. Google Cloud regions, zones, edge points, and undisclosed parcels are outside scope. Public Google map markers are medium-confidence coordinate proxies; other records use low-confidence OpenStreetMap Nominatim locality centroids. No coordinate is represented as a verified campus boundary or street address.
 
-Project type, cost, uptime, and growth inputs are explicit tool scenarios. They are not Google disclosures. PUE, WUE, capacity, and energy use remain null in the seed because public reporting does not map every value cleanly to each public location unit.
+Project type, cost, uptime, and growth inputs are explicit tool scenarios. They are not Google disclosures. The portfolio view matches Google's 2026 Q1 PUE table to 27 public location rows. Unmatched rows use the visible, editable 2025 Google fleet PUE of 1.09. Site-level public WUE is unavailable; the default 1.15 L/kWh is an editable 2024 fleet proxy for data centers supporting LLM models. Every row shows whether a metric is operator-reported, a fleet proxy, a user assumption, or derived.
+
+## Public demo
+
+The read-only GitHub Pages edition is published at:
+
+- `https://adarbayev.github.io/cascadis-dcs/`
+
+Pages serves a pinned 59-location snapshot. Score scenarios, filters, comparison, and exports run in the browser. New coordinate assessments remain in the local FastAPI edition because GitHub Pages cannot run the backend or SQLite database.
 
 ## Quick start
 
@@ -51,6 +59,24 @@ An Ember key is optional. With no key, the backend uses Ember's public yearly CS
 5. Review the map, portfolio ranking, separate WRI sensitivity views, cooling shortlist, delivery sequence, source evidence, and warnings.
 
 The WRI views stay separate. Baseline Water Stress drives the cooling matrix. Default, Electric Power, and Semiconductor scores support sensitivity analysis. WRI does not provide a Data Center preset.
+
+## Operating metrics and composite scenario
+
+The dashboard keeps two scores visible:
+
+- **Location Exposure Score**: the original WRI water and national grid-carbon screen.
+- **Composite Priority Score**: an editable scenario that adds a facility-efficiency benchmark gap.
+
+Default facility assumptions are taken from public Google evidence where a direct mapping is credible. CUE is derived as `PUE × grid factor / 1000` in `kgCO2e/kWh IT`. CUE remains filterable and receives no separate composite weight because PUE and grid carbon already appear in the calculation.
+
+```text
+pue_gap = clamp((PUE - 1.40) / (2.00 - 1.40), 0, 1)
+wue_gap = clamp((WUE - 1.50) / (3.00 - 1.50), 0, 1)
+facility_gap = 0.5 × pue_gap + 0.5 × wue_gap
+composite = 100 × (0.30 × facility_gap + 0.40 × WRI/5 + 0.30 × grid/800)
+```
+
+The anchors and weights are internal scenario settings. Published Google PUE/WUE proxies are currently below the internal intervention thresholds, so the default facility-gap contribution is zero; changing a scenario value above a threshold makes the facility term active. Filters support minimum and maximum exposure/composite scores plus maximum PUE, WUE, and CUE.
 
 ## CSV input
 
@@ -110,6 +136,9 @@ Example request:
 - `backend/`: FastAPI, Pydantic, HTTPX, SQLite, providers, policy engine, tests
 - `dashboard/`: React, TypeScript, Vite, Tailwind, Leaflet, tests
 - `config/decision_policy.v1.json`: versioned score anchors, bands, cooling matrix, delivery actions
+- `config/operational_composite.v1.json`: versioned operating assumptions, anchors, weights, and composite formula
+- `dashboard/public/data/google-portfolio.2026-08-10.json`: pinned public-demo assessment snapshot
+- `.github/workflows/pages.yml`: tested GitHub Pages deployment
 - `scripts/dev.py`: coordinated local launcher
 - `scripts/prepare_aqueduct.py`: reproducible path from the pinned official Aqueduct ZIP to a slim GeoPackage
 
@@ -146,6 +175,12 @@ PYTHONPATH="$PWD/backend/src" RUN_NETWORK_TESTS=1 .venv/bin/python -m pytest bac
 ```
 
 Browser QA artifacts belong under `output/playwright/`, which is excluded from Git.
+
+The Pages build can be reproduced locally with:
+
+```bash
+VITE_APP_MODE=static VITE_BASE_PATH=/cascadis-dcs/ npm --prefix dashboard run build
+```
 
 ## Data handling and limitations
 

@@ -79,7 +79,7 @@ describe("dashboard shell", () => {
 
     render(<App />);
     expect(await screen.findByText("Portfolio ranking blocked")).toBeInTheDocument();
-    const highestPriority = screen.getByText("Highest exposure");
+    const highestPriority = screen.getByText("Highest composite");
     expect(within(highestPriority.parentElement!).getByText("N/A")).toBeInTheDocument();
   });
 

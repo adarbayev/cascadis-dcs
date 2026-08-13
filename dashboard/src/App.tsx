@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowUpRight,
   BookOpen,
@@ -13,13 +13,15 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { createAssessment, getPolicy, getPortfolio, getSourceStatus } from "./api";
+import { createAssessment, getPolicy, getPortfolio, getSourceStatus, isStaticMode } from "./api";
 import { ComparisonPanel } from "./components/ComparisonPanel";
 import { DecisionInspector } from "./components/DecisionInspector";
 import { InfoDrawer } from "./components/InfoDrawer";
 import { PortfolioMap } from "./components/PortfolioMap";
 import { PortfolioTable } from "./components/PortfolioTable";
 import { RecommendationPanel } from "./components/RecommendationPanel";
+import { OperationalProfilePanel } from "./components/OperationalProfilePanel";
+import { ScenarioControls } from "./components/ScenarioControls";
 import { SiteInputPanel } from "./components/SiteInputPanel";
 import { Notice } from "./components/Notice";
 import {
@@ -35,12 +37,22 @@ import {
 } from "./lib/assessment";
 import { downloadText, parseLocationCsv, rowsToCsv } from "./lib/csv";
 import { buildPortfolioCsv } from "./lib/portfolioExport";
+import {
+  buildOperationalProfile,
+  DEFAULT_OPERATIONAL_SCENARIO,
+  DEFAULT_PORTFOLIO_FILTERS,
+  operationalScenarioFromPolicy,
+  profileMatchesFilters,
+} from "./lib/operationalScore";
 import type {
   AssessmentResult,
   DraftForm,
   LocationInput,
   MapLayer,
+  OperationalScenario,
   PolicyDocument,
+  PortfolioFilters,
+  RankingMetric,
   SensitivityView,
   SourceStatus,
 } from "./types";
@@ -117,17 +129,10 @@ function sourceTone(status?: string): string {
   const normalized = status?.toLowerCase();
   if (normalized === "available" || normalized === "ok") return "bg-emerald-400";
   if (normalized === "configured") return "bg-sky-300";
+  if (normalized === "snapshot") return "bg-violet-300";
   if (normalized === "stale") return "bg-amber-400";
   if (normalized === "unavailable") return "bg-red-400";
   return "bg-slate-400";
-}
-
-function leadingResultId(items: AssessmentResult[], view: SensitivityView = "bws"): string | null {
-  const scored = items
-    .map((item) => ({ id: item.assessment_id, score: environmentalScore(item, view) }))
-    .filter((item): item is { id: string; score: number } => item.score !== null)
-    .sort((first, second) => second.score - first.score);
-  return scored[0]?.id ?? items[0]?.assessment_id ?? null;
 }
 
 function App() {
@@ -142,6 +147,9 @@ function App() {
   const [portfolioScope, setPortfolioScope] = useState<"google" | "all" | "other">("all");
   const [portfolioQuery, setPortfolioQuery] = useState("");
   const [facilityStatus, setFacilityStatus] = useState<"all" | "operating" | "in_development" | "under_construction" | "announced">("all");
+  const [operationalScenario, setOperationalScenario] = useState<OperationalScenario>(DEFAULT_OPERATIONAL_SCENARIO);
+  const [portfolioFilters, setPortfolioFilters] = useState<PortfolioFilters>(DEFAULT_PORTFOLIO_FILTERS);
+  const [rankingMetric, setRankingMetric] = useState<RankingMetric>("composite");
   const [sourceStatus, setSourceStatus] = useState<SourceStatus[]>([]);
   const [policy, setPolicy] = useState<PolicyDocument | null>(null);
   const [portfolioLoading, setPortfolioLoading] = useState(true);
@@ -152,6 +160,7 @@ function App() {
   const [sourceError, setSourceError] = useState<string | null>(null);
   const [drawer, setDrawer] = useState<"methodology" | "sources" | null>(null);
   const [intakeOpen, setIntakeOpen] = useState(false);
+  const operationalPolicyApplied = useRef(false);
 
   const loadSources = async () => {
     setSourceLoading(true);
@@ -162,6 +171,10 @@ function App() {
     if (policyResult.status === "fulfilled") {
       setPolicy(policyResult.value);
       if (policyResult.value.default_weights) setWeights(policyResult.value.default_weights);
+      if (policyResult.value.operational_composite && !operationalPolicyApplied.current) {
+        setOperationalScenario(operationalScenarioFromPolicy(policyResult.value));
+        operationalPolicyApplied.current = true;
+      }
     }
     setSourceLoading(false);
   };
@@ -179,9 +192,9 @@ function App() {
         );
         if (googleResults.length) {
           setPortfolioScope("google");
-          setSelectedId(leadingResultId(googleResults));
+          setSelectedId(null);
         } else if (outcome.value[0]) {
-          setSelectedId(leadingResultId(outcome.value));
+          setSelectedId(null);
         }
       } else {
         setPortfolioError(outcome.reason instanceof Error ? outcome.reason.message : "Portfolio is unavailable.");
@@ -223,32 +236,64 @@ function App() {
     return results;
   }, [portfolioScope, results]);
 
+  const operationalProfiles = useMemo(() => new Map(
+    scopedResults.map((result) => [result.assessment_id, buildOperationalProfile(result, operationalScenario, view)]),
+  ), [operationalScenario, scopedResults, view]);
+
   const visibleResults = useMemo(() => {
     const query = portfolioQuery.trim().toLowerCase();
     return scopedResults.filter((result) => {
       const status = result.site.location_evidence?.facility_status;
       if (facilityStatus !== "all" && status !== facilityStatus) return false;
-      if (!query) return true;
-      return [
-        result.site.name,
-        result.site.id,
-        countryName(result),
-        result.site.location_evidence?.operator,
-      ].some((value) => value?.toLowerCase().includes(query));
+      if (query) {
+        const textMatch = [
+          result.site.name,
+          result.site.id,
+          countryName(result),
+          result.site.location_evidence?.operator,
+        ].some((value) => value?.toLowerCase().includes(query));
+        if (!textMatch) return false;
+      }
+      const profile = operationalProfiles.get(result.assessment_id);
+      return profile ? profileMatchesFilters(result, profile, portfolioFilters, view) : false;
     });
-  }, [facilityStatus, portfolioQuery, scopedResults]);
+  }, [facilityStatus, operationalProfiles, portfolioFilters, portfolioQuery, scopedResults, view]);
 
   useEffect(() => {
     if (!selectedId || !visibleResults.some((result) => result.assessment_id === selectedId)) {
-      setSelectedId(leadingResultId(visibleResults, view));
+      const commonGridBasis = !hasMixedGridBasis(visibleResults, view);
+      const ranked = commonGridBasis ? [...visibleResults].sort((first, second) => {
+        const firstScore = rankingMetric === "composite"
+          ? operationalProfiles.get(first.assessment_id)?.composite_score ?? null
+          : environmentalScore(first, view);
+        const secondScore = rankingMetric === "composite"
+          ? operationalProfiles.get(second.assessment_id)?.composite_score ?? null
+          : environmentalScore(second, view);
+        return (secondScore ?? -1) - (firstScore ?? -1);
+      }) : visibleResults;
+      setSelectedId(ranked[0]?.assessment_id ?? null);
     }
-  }, [visibleResults, selectedId, view]);
+  }, [operationalProfiles, rankingMetric, selectedId, view, visibleResults]);
+
+  useEffect(() => {
+    const visibleIds = new Set(visibleResults.map((result) => result.assessment_id));
+    setCompareIds((current) => {
+      const filtered = current.filter((id) => visibleIds.has(id));
+      return filtered.length === current.length ? current : filtered;
+    });
+  }, [visibleResults]);
 
   const selected = visibleResults.find((result) => result.assessment_id === selectedId) ?? null;
+  const selectedProfile = selected ? operationalProfiles.get(selected.assessment_id) ?? null : null;
   const compared = compareIds.map((id) => visibleResults.find((result) => result.assessment_id === id)).filter((item): item is AssessmentResult => Boolean(item));
   const mixedGridBasis = useMemo(() => hasMixedGridBasis(visibleResults, view), [visibleResults, view]);
   const scoredResults = visibleResults.filter((result) => environmentalScore(result, view) !== null);
   const topScore = !mixedGridBasis && scoredResults.length ? Math.max(...scoredResults.map((result) => environmentalScore(result, view) as number)) : null;
+  const compositeScores = visibleResults
+    .map((result) => operationalProfiles.get(result.assessment_id)?.composite_score ?? null)
+    .filter((score): score is number => score !== null);
+  const topComposite = !mixedGridBasis && compositeScores.length ? Math.max(...compositeScores) : null;
+  const headlineScore = rankingMetric === "composite" ? topComposite : topScore;
   const highWater = visibleResults.filter((result) => {
     const category = bwsCategory(result);
     return category === -1 || (category !== null && category >= 3);
@@ -331,12 +376,12 @@ function App() {
 
   const exportJson = () => downloadText(
     "cascadis-location-assessments.json",
-    JSON.stringify({ exported_at: new Date().toISOString(), active_water_view: view, policy_version: policy?.version, portfolio_scope: portfolioScope, assessments: visibleResults }, null, 2),
+    JSON.stringify({ exported_at: new Date().toISOString(), snapshot_at: isStaticMode ? sourceStatus[0]?.checked_at : undefined, active_water_view: view, policy_version: policy?.version, portfolio_scope: portfolioScope, ranking_metric: rankingMetric, operational_scenario: operationalScenario, active_filters: portfolioFilters, operational_profiles: Object.fromEntries(visibleResults.map((result) => [result.assessment_id, operationalProfiles.get(result.assessment_id)])), assessments: visibleResults }, null, 2),
     "application/json;charset=utf-8",
   );
 
   const exportCsv = () => {
-    downloadText("cascadis-location-ranking.csv", buildPortfolioCsv(visibleResults, view), "text/csv;charset=utf-8");
+    downloadText("cascadis-location-ranking.csv", buildPortfolioCsv(visibleResults, view, { profiles: operationalProfiles, rankingMetric, scenario: operationalScenario, filters: portfolioFilters, snapshotAt: isStaticMode ? sourceStatus[0]?.checked_at : undefined }), "text/csv;charset=utf-8");
   };
 
   return (
@@ -370,7 +415,7 @@ function App() {
             <nav className="flex items-center gap-4" aria-label="Reference panels">
               <button type="button" onClick={() => setDrawer("methodology")} className="flex items-center gap-2 border-b border-ink/30 py-1 text-xs font-semibold hover:border-ink"><BookOpen size={14} /> Method</button>
               <button type="button" onClick={() => setDrawer("sources")} className="flex items-center gap-2 border-b border-ink/30 py-1 text-xs font-semibold hover:border-ink"><Database size={14} /> Sources</button>
-              <button type="button" onClick={() => setIntakeOpen(true)} className="flex items-center gap-2 border border-ink bg-ink px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-tide"><Plus size={15} /> Add location</button>
+              {isStaticMode ? <span className="border border-ink/30 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">Published snapshot</span> : <button type="button" onClick={() => setIntakeOpen(true)} className="flex items-center gap-2 border border-ink bg-ink px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-tide"><Plus size={15} /> Add location</button>}
             </nav>
           </div>
         </div>
@@ -381,7 +426,7 @@ function App() {
           <dl className="grid grid-cols-2 divide-x divide-y divide-ink/15 sm:grid-cols-4 sm:divide-y-0">
             {[
               { label: "Locations in view", value: portfolioLoading ? "—" : String(visibleResults.length), detail: `${fullCoverage} source-complete` },
-              { label: "Highest exposure", value: mixedGridBasis ? "N/A" : formatNumber(topScore, 0), detail: viewLabels[view].long },
+              { label: rankingMetric === "composite" ? "Highest composite" : "Highest exposure", value: mixedGridBasis ? "N/A" : formatNumber(headlineScore, 0), detail: rankingMetric === "composite" ? "scenario priority / 100" : viewLabels[view].long },
               { label: "Water gate", value: String(highWater), detail: "high, extreme, or arid" },
               { label: "Carbon attention", value: String(highCarbon), detail: "≥400 gCO₂e/kWh" },
             ].map(({ label, value, detail }) => (
@@ -448,7 +493,7 @@ function App() {
                   ))}
                 </div>
               </div>
-              <details className="group relative">
+              {!isStaticMode ? <details className="group relative">
                 <summary className="cursor-pointer list-none border border-ink/30 px-3 py-2 text-xs font-semibold text-ink hover:border-ink">Weights {Math.round(weights.water * 100)} / {Math.round(weights.carbon * 100)}</summary>
                 <div className="absolute right-0 z-[500] mt-2 w-72 border border-ink bg-paper p-4 shadow-[8px_8px_0_rgba(20,33,29,0.12)]">
                   <p className="atlas-kicker text-slate-500">Apply on next assessment</p>
@@ -457,7 +502,7 @@ function App() {
                     <label className="grid grid-cols-[48px_1fr_36px] items-center gap-3 text-xs"><span>Carbon</span><input aria-label="Carbon weight" type="range" min="0" max="1" step="0.05" value={weights.carbon} onChange={(event) => { const carbon = Number(event.target.value); setWeights({ carbon, water: Number((1 - carbon).toFixed(2)) }); }} /><span className="atlas-marker-index text-right">{Math.round(weights.carbon * 100)}%</span></label>
                   </div>
                 </div>
-              </details>
+              </details> : null}
             </div>
           </div>
           <p className="mt-3 text-[11px] leading-5 text-slate-500">No official data-center preset. Electric Power and Semiconductor remain separate WRI sensitivity views.</p>
@@ -473,6 +518,28 @@ function App() {
           </section>
         ) : null}
 
+        {isStaticMode ? (
+          <div className="mt-3">
+            <Notice tone="info" title="Published portfolio snapshot">
+              <p>WRI and Ember results were captured on 10 August 2026. Scenario changes, filters, and exports run in this browser; new coordinate assessments remain available in the local API version.</p>
+            </Notice>
+          </div>
+        ) : null}
+
+        <ScenarioControls
+          scenario={operationalScenario}
+          filters={portfolioFilters}
+          rankingMetric={rankingMetric}
+          onScenarioChange={setOperationalScenario}
+          onFiltersChange={setPortfolioFilters}
+          onRankingMetricChange={setRankingMetric}
+          onReset={() => {
+            setOperationalScenario(DEFAULT_OPERATIONAL_SCENARIO);
+            setPortfolioFilters(DEFAULT_PORTFOLIO_FILTERS);
+            setRankingMetric("composite");
+          }}
+        />
+
         <section className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_390px]">
           <div className="atlas-panel overflow-hidden">
             <div className="flex flex-wrap items-end justify-between gap-4 border-b atlas-rule px-4 py-3 sm:px-5">
@@ -480,13 +547,14 @@ function App() {
                 <p className="atlas-kicker text-tide">Atlas plate / {mapLayer}</p>
                 <h2 className="mt-1 font-display text-2xl leading-none text-ink">Regional evidence map</h2>
               </div>
-              <p className="max-w-md text-right text-[11px] leading-5 text-slate-500">Click the map to begin a new assessment. Select a marker to read the decision desk.</p>
+              <p className="max-w-md text-right text-[11px] leading-5 text-slate-500">{isStaticMode ? "Published snapshot. Select a marker to read the decision desk." : "Click the map to begin a new assessment. Select a marker to read the decision desk."}</p>
             </div>
             <PortfolioMap
               results={visibleResults}
               selectedId={selectedId}
               onSelect={setSelectedId}
               onMapClick={(latitude, longitude) => {
+                if (isStaticMode) return;
                 setForm((current) => ({ ...current, latitude: latitude.toFixed(6), longitude: longitude.toFixed(6) }));
                 setIntakeOpen(true);
               }}
@@ -515,16 +583,17 @@ function App() {
             <div className="atlas-panel flex min-h-52 items-center justify-center"><LoaderCircle className="animate-spin text-tide" /><span className="ml-3 text-sm font-semibold text-slate-500">Loading saved assessments…</span></div>
           ) : visibleResults.length ? (
             <div className="space-y-8">
-              <PortfolioTable results={visibleResults} selectedId={selectedId} onSelect={setSelectedId} view={view} compareIds={compareIds} onToggleCompare={toggleCompare} />
-              <ComparisonPanel results={compared} view={view} onRemove={toggleCompare} />
+              <PortfolioTable results={visibleResults} selectedId={selectedId} onSelect={setSelectedId} view={view} compareIds={compareIds} onToggleCompare={toggleCompare} profiles={operationalProfiles} rankingMetric={rankingMetric} />
+              <ComparisonPanel results={compared} view={view} onRemove={toggleCompare} profiles={operationalProfiles} />
+              {selectedProfile ? <OperationalProfilePanel profile={selectedProfile} /> : null}
               {selected ? <div id="selected-analysis" className="scroll-mt-5"><RecommendationPanel result={selected} view={view} /></div> : null}
             </div>
           ) : (
             <section className="atlas-panel px-6 py-14 text-center">
               <MapPinned size={24} className="mx-auto text-tide" />
               <h2 className="mt-4 font-display text-2xl text-ink">{results.length ? "No locations match this view" : "No locations assessed yet"}</h2>
-              <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-500">{results.length ? "Clear the search or status filter, or choose another portfolio scope." : "Click the map or open Add location to build a source-backed assessment."}</p>
-              {!results.length ? <button type="button" onClick={() => setIntakeOpen(true)} className="mt-5 border border-ink bg-ink px-4 py-2.5 text-xs font-semibold text-white hover:bg-tide">Add first location</button> : null}
+              <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-500">{results.length ? "Clear the search, status, or score filters, or choose another portfolio scope." : "Click the map or open Add location to build a source-backed assessment."}</p>
+              {!results.length && !isStaticMode ? <button type="button" onClick={() => setIntakeOpen(true)} className="mt-5 border border-ink bg-ink px-4 py-2.5 text-xs font-semibold text-white hover:bg-tide">Add first location</button> : null}
             </section>
           )}
         </section>
@@ -541,11 +610,11 @@ function App() {
 
         <footer className="flex flex-col gap-3 py-6 text-xs leading-5 text-slate-500 sm:flex-row sm:items-center sm:justify-between">
           <p>Screening support only. Final cooling design requires engineering and commercial validation.</p>
-          <p className="flex items-center gap-2"><CheckCircle2 size={14} className="text-tide" /> Policy {policy?.version ?? "version unavailable"} · data refreshed per assessment</p>
+          <p className="flex items-center gap-2"><CheckCircle2 size={14} className="text-tide" /> Policy {policy?.version ?? "version unavailable"} · {isStaticMode ? "published snapshot" : "data refreshed per assessment"}</p>
         </footer>
       </main>
 
-      {intakeOpen ? (
+      {intakeOpen && !isStaticMode ? (
         <div className="fixed inset-0 z-[900] flex justify-end bg-ink/45" role="dialog" aria-modal="true" aria-label="Add locations" onMouseDown={() => setIntakeOpen(false)}>
           <div className="h-full w-full max-w-[560px] overflow-y-auto border-l border-ink bg-paper shadow-lift" onMouseDown={(event) => event.stopPropagation()}>
             <div className="sticky top-0 z-10 flex items-center justify-between border-b atlas-rule bg-paper px-5 py-4">

@@ -4,9 +4,23 @@ import type {
   AssessmentResult,
   PolicyDocument,
   SourceStatus,
+  StaticPortfolioSnapshot,
 } from "./types";
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || "/api/v1").replace(/\/$/, "");
+export const isStaticMode = import.meta.env.VITE_APP_MODE === "static";
+const SNAPSHOT_URL = `${import.meta.env.BASE_URL}data/google-portfolio.2026-08-10.json`;
+let snapshotPromise: Promise<StaticPortfolioSnapshot> | null = null;
+
+async function getStaticSnapshot(): Promise<StaticPortfolioSnapshot> {
+  if (!snapshotPromise) {
+    snapshotPromise = fetch(SNAPSHOT_URL, { headers: { Accept: "application/json" } }).then(async (response) => {
+      if (!response.ok) throw new ApiError(`Published snapshot unavailable (${response.status}).`, response.status);
+      return (await response.json()) as StaticPortfolioSnapshot;
+    });
+  }
+  return snapshotPromise;
+}
 
 export class ApiError extends Error {
   status: number;
@@ -46,6 +60,7 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export async function createAssessment(payload: AssessmentRequest): Promise<AssessmentResponse> {
+  if (isStaticMode) throw new ApiError("Live source assessment requires the local Cascadis API.", 503);
   const data = await requestJson<AssessmentResponse | AssessmentResult[]>("/assessments", {
     method: "POST",
     body: JSON.stringify(payload),
@@ -54,6 +69,7 @@ export async function createAssessment(payload: AssessmentRequest): Promise<Asse
 }
 
 export async function getPortfolio(): Promise<AssessmentResult[]> {
+  if (isStaticMode) return (await getStaticSnapshot()).assessments;
   const data = await requestJson<
     | AssessmentResult[]
     | { assessments?: AssessmentResult[]; items?: AssessmentResult[]; results?: AssessmentResult[] }
@@ -63,10 +79,18 @@ export async function getPortfolio(): Promise<AssessmentResult[]> {
 }
 
 export async function getPolicy(): Promise<PolicyDocument> {
+  if (isStaticMode) return (await getStaticSnapshot()).policy;
   return requestJson<PolicyDocument>("/policy");
 }
 
 export async function getSourceStatus(): Promise<SourceStatus[]> {
+  if (isStaticMode) {
+    return (await getStaticSnapshot()).source_status.map((source) => ({
+      ...source,
+      id: source.id ?? source.provider,
+      detail: source.detail ?? source.note,
+    }));
+  }
   const data = await requestJson<
     SourceStatus[] | { checked_at?: string; sources?: SourceStatus[]; status?: SourceStatus[] | Record<string, SourceStatus> }
   >("/sources/status");
