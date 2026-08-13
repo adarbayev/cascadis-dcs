@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { assessmentFixture } from "../test/fixtures";
 import { PortfolioTable } from "./PortfolioTable";
+import { buildOperationalProfile, DEFAULT_OPERATIONAL_SCENARIO } from "../lib/operationalScore";
 
 describe("portfolio table grid-basis guard", () => {
   it("shows source order without numeric ranks when bases differ", () => {
@@ -23,6 +24,8 @@ describe("portfolio table grid-basis guard", () => {
         view="bws"
         compareIds={[]}
         onToggleCompare={vi.fn()}
+        profiles={new Map([[first.assessment_id, buildOperationalProfile(first, DEFAULT_OPERATIONAL_SCENARIO)], [second.assessment_id, buildOperationalProfile(second, DEFAULT_OPERATIONAL_SCENARIO)]])}
+        rankingMetric="exposure"
       />,
     );
 
@@ -48,6 +51,8 @@ describe("portfolio table grid-basis guard", () => {
         view="bws"
         compareIds={[]}
         onToggleCompare={vi.fn()}
+        profiles={new Map([[first.assessment_id, buildOperationalProfile(first, DEFAULT_OPERATIONAL_SCENARIO)], [second.assessment_id, buildOperationalProfile(second, DEFAULT_OPERATIONAL_SCENARIO)]])}
+        rankingMetric="exposure"
       />,
     );
 

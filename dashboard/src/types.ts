@@ -5,6 +5,66 @@ export type GrowthRate = "stable" | "moderate" | "high";
 export type SensitivityView = "bws" | "default" | "elp" | "smc";
 export type ApiWaterView = "baseline_water_stress" | "default_overall" | "electric_power" | "semiconductor";
 export type MapLayer = "water" | "carbon" | "recommendation";
+export type RankingMetric = "composite" | "exposure";
+
+export interface OperationalScenario {
+  fallback_pue: number;
+  use_reported_google_pue: boolean;
+  fallback_wue_l_per_kwh: number;
+  fixed_cue_kgco2e_per_kwh_it: number | null;
+  weights: {
+    facility: number;
+    water: number;
+    carbon: number;
+  };
+  anchors: {
+    pue_target: number;
+    pue_upper: number;
+    wue_target_l_per_kwh: number;
+    wue_l_per_kwh: number;
+    grid_gco2e_per_kwh: number;
+  };
+}
+
+export type OperationalMetricBasis = "site_input" | "operator_reported" | "fleet_proxy" | "scenario_assumption" | "derived";
+
+export interface OperationalMetricValue {
+  value: number | null;
+  basis: OperationalMetricBasis;
+  detail: string;
+  source_url?: string;
+}
+
+export interface OperationalProfile {
+  pue: OperationalMetricValue;
+  wue: OperationalMetricValue;
+  cue: OperationalMetricValue;
+  water_stress_score: number | null;
+  components: {
+    facility: number | null;
+    pue_gap: number | null;
+    wue_gap: number | null;
+    water: number | null;
+    carbon: number | null;
+  };
+  normalized_weights: {
+    facility: number;
+    water: number;
+    carbon: number;
+  };
+  composite_score: number | null;
+}
+
+export interface PortfolioFilters {
+  exposure_min: number;
+  exposure_max: number;
+  composite_min: number;
+  composite_max: number;
+  pue_max: number | null;
+  wue_max: number | null;
+  cue_max: number | null;
+  include_unscored: boolean;
+}
 
 export interface LocationEvidence {
   portfolio_id: string;
@@ -215,6 +275,16 @@ export interface AssessmentResponse {
   policy_version?: string;
 }
 
+export interface StaticPortfolioSnapshot {
+  schema_version: string;
+  snapshot_at: string;
+  snapshot_scope: string;
+  manifest_version: string;
+  policy: PolicyDocument;
+  source_status: SourceStatus[];
+  assessments: AssessmentResult[];
+}
+
 export interface SourceStatus {
   id?: string;
   provider?: string;
@@ -238,6 +308,11 @@ export interface PolicyDocument {
   anchors?: { carbon_gco2e_per_kwh?: number };
   carbon_bands?: Record<string, number | string>;
   default_weights?: { water: number; carbon: number };
+  operational_composite?: {
+    default_assumptions?: { pue?: number; wue_l_per_kwh?: number; fixed_cue_kgco2e_per_kwh_it?: number | null };
+    anchors?: { pue_target?: number; pue_upper?: number; wue_target_l_per_kwh?: number; wue_upper_l_per_kwh?: number; grid_gco2e_per_kwh?: number };
+    default_weights?: { facility_efficiency?: number; water_stress?: number; grid_carbon?: number };
+  };
   [key: string]: unknown;
 }
 

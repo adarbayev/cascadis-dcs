@@ -58,6 +58,36 @@ Portfolio scores are ranked only when all scored results use the same grid-facto
 
 The score is an internal, transparent screening index. It is not an industry standard and does not select cooling technology by itself. The cooling matrix keeps baseline water stress as a non-compensatory constraint so a lower-carbon grid cannot offset a high-water condition.
 
+## Composite Priority Score
+
+The optional operating scenario preserves the original benchmark-gap logic while putting every component on a dimensionless 0–1 scale:
+
+```text
+pue_gap = clamp((PUE - 1.40) / (2.00 - 1.40), 0, 1)
+wue_gap = clamp((WUE - 1.50) / (3.00 - 1.50), 0, 1)
+facility_gap = 0.5 × pue_gap + 0.5 × wue_gap
+water_component = selected WRI score / 5
+grid_component = clamp(grid factor / 800, 0, 1)
+
+Composite Priority Score = 100 × (
+  facility_weight × facility_gap +
+  water_weight × water_component +
+  grid_weight × grid_component
+)
+```
+
+Default weights are 0.30 facility, 0.40 water, and 0.30 grid. User weights are normalised to total 1. PUE/WUE target and upper anchors are internal scenario values rather than external standards. Missing independent evidence blocks the composite; values are never silently treated as zero.
+
+The Google demonstration uses directly matched 2026 Q1 PUE values for 27 public location rows. A conservative maximum is used when one public location maps to multiple reported facilities. Other Google rows use the 2025 fleet PUE of 1.09 as a visible proxy. The WUE default is Google's 2024 fleet value of 1.15 L/kWh for data centers supporting LLM models and is not represented as site-level evidence. Generic non-Google rows receive the same numeric defaults only as user scenario assumptions.
+
+```text
+CUE location proxy (kgCO2e/kWh IT) = PUE × grid factor (gCO2e/kWh) / 1000
+```
+
+CUE is displayed and filterable without a direct composite weight. A CUE term alongside PUE and grid intensity would repeat the same energy and carbon drivers. Under the default Google proxies, both facility metrics fall below the intervention thresholds, which makes the default facility-gap component zero. Higher user assumptions or site inputs activate the component.
+
+The score supports portfolio screening under explicit stakeholder weights. It is not an industry-standard sustainability rating. Decision review should retain the component values, active weights, evidence basis, hard water gate, and sensitivity results.
+
 ## Google framework alignment
 
 Google publishes a two-tier Water Risk Framework for source-level cooling decisions. It does not publish one reproducible composite combining water, grid carbon, PUE/WUE/CUE, cost, uptime, and growth.

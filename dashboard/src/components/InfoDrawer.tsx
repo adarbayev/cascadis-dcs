@@ -31,12 +31,22 @@ export function InfoDrawer({ mode, onClose, policy, sourceStatus }: InfoDrawerPr
             <section>
               <div className="flex items-center gap-2 text-sm font-bold text-ink"><BookOpen size={17} className="text-forest-600" /> Location Exposure Score</div>
               <p className="mt-3 text-sm leading-6 text-slate-600">The backend normalises the selected WRI water score and the grid factor, then applies the policy weights. Missing source values remain unscored. The interface reads policy-generated scores and does not silently replace them.</p>
-              <div className="mt-3 border-t-4 border-signal bg-ink p-4 font-mono text-xs leading-6 text-white/80">
+              <div className="mt-3 border border-ink bg-ink p-4 text-xs leading-6 text-white/80">
                 water_normalised = selected WRI score / 5<br />
                 carbon_normalised = min(grid factor / {anchor ?? "policy anchor"}, 1)<br />
                 priority = 100 × ({waterWeight ?? "water weight"} × water + {carbonWeight ?? "carbon weight"} × carbon)
               </div>
               <p className="mt-2 text-xs leading-5 text-slate-500">The carbon anchor is an internal, configurable policy value. It is not presented as an external standard.</p>
+            </section>
+            <section>
+              <h3 className="text-sm font-bold text-ink">Composite Priority Score</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">The editable scenario adds facility efficiency to the location evidence. Facility efficiency gives equal internal weight to PUE above 1.40 and WUE above 1.50. Water stress and grid carbon remain separate components.</p>
+              <div className="mt-3 border border-ink/20 bg-[#eef1e9] p-4 text-xs leading-6 text-slate-700">
+                facility = 0.5 × normalised PUE gap + 0.5 × normalised WUE gap<br />
+                composite = 100 × (facility weight × facility + water weight × WRI/5 + grid weight × grid/800)<br />
+                CUE = PUE × grid factor / 1000
+              </div>
+              <p className="mt-2 text-xs leading-5 text-slate-500">CUE is shown and filterable. It is excluded from the weighted sum because PUE and grid carbon already appear as underlying drivers. The targets, caps, and weights are internal scenario choices.</p>
             </section>
             <section>
               <h3 className="text-sm font-bold text-ink">Water sensitivity</h3>

@@ -1,5 +1,5 @@
 import { X } from "lucide-react";
-import type { AssessmentResult, SensitivityView } from "../types";
+import type { AssessmentResult, OperationalProfile, SensitivityView } from "../types";
 import {
   countryName,
   decision,
@@ -15,14 +15,20 @@ export function ComparisonPanel({
   results,
   view,
   onRemove,
+  profiles,
 }: {
   results: AssessmentResult[];
   view: SensitivityView;
   onRemove: (id: string) => void;
+  profiles?: Map<string, OperationalProfile>;
 }) {
   if (results.length < 2) return null;
   const rows = [
     { label: "Location exposure", value: (item: AssessmentResult) => formatNumber(environmentalScore(item, view), 0) },
+    { label: "Composite priority", value: (item: AssessmentResult) => formatNumber(profiles?.get(item.assessment_id)?.composite_score ?? null, 0) },
+    { label: "PUE", value: (item: AssessmentResult) => formatNumber(profiles?.get(item.assessment_id)?.pue.value ?? null, 2) },
+    { label: "WUE", value: (item: AssessmentResult) => profiles?.get(item.assessment_id)?.wue.value == null ? "Not available" : `${formatNumber(profiles.get(item.assessment_id)?.wue.value ?? null, 2)} L/kWh` },
+    { label: "CUE", value: (item: AssessmentResult) => profiles?.get(item.assessment_id)?.cue.value == null ? "Not available" : `${formatNumber(profiles.get(item.assessment_id)?.cue.value ?? null, 2)} kgCO₂e/kWh IT` },
     { label: "Water score", value: (item: AssessmentResult) => formatNumber(waterScore(item, view), 2) },
     { label: "Water label", value: (item: AssessmentResult) => waterLabel(item, view) ?? "Not available" },
     { label: "Grid factor", value: (item: AssessmentResult) => gridFactor(item) === null ? "Not available" : `${formatNumber(gridFactor(item), 0)} gCO₂e/kWh` },

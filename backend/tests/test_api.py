@@ -22,6 +22,11 @@ def test_health_and_policy_are_versioned(client: TestClient) -> None:
     policy = client.get("/api/v1/policy")
     assert policy.status_code == 200
     assert policy.json()["anchors"]["carbon_gco2e_per_kwh"] == 800
+    assert policy.json()["operational_composite"]["default_weights"] == {
+        "facility_efficiency": 0.3,
+        "water_stress": 0.4,
+        "grid_carbon": 0.3,
+    }
 
 
 def test_complete_assessment_persists_and_exposes_contract(

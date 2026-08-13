@@ -29,6 +29,10 @@ class Settings(BaseSettings):
         default=ROOT_DIR / "config" / "decision_policy.v1.json",
         validation_alias="DECISION_POLICY_PATH",
     )
+    operational_policy_path: Path = Field(
+        default=ROOT_DIR / "config" / "operational_composite.v1.json",
+        validation_alias="OPERATIONAL_POLICY_PATH",
+    )
     google_portfolio_manifest_path: Path = Field(
         default=(
             ROOT_DIR
