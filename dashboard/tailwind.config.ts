@@ -34,9 +34,9 @@ export default {
         lift: "-18px 0 60px rgba(20, 33, 29, 0.16)"
       },
       fontFamily: {
-        sans: ["IBM Plex Sans Variable", "Helvetica Neue", "Segoe UI", "sans-serif"],
-        display: ["IBM Plex Sans Variable", "Helvetica Neue", "Segoe UI", "sans-serif"],
-        mono: ["IBM Plex Sans Variable", "Helvetica Neue", "Segoe UI", "sans-serif"]
+        sans: ["Poppins", "Helvetica Neue", "Segoe UI", "sans-serif"],
+        display: ["Poppins", "Helvetica Neue", "Segoe UI", "sans-serif"],
+        mono: ["Poppins", "Helvetica Neue", "Segoe UI", "sans-serif"]
       }
     }
   },
