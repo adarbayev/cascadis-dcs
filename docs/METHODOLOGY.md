@@ -58,6 +58,12 @@ Portfolio scores are ranked only when all scored results use the same grid-facto
 
 The score is an internal, transparent screening index. It is not an industry standard and does not select cooling technology by itself. The cooling matrix keeps baseline water stress as a non-compensatory constraint so a lower-carbon grid cannot offset a high-water condition.
 
+## Dashboard control boundary
+
+Overview controls select portfolio records without changing a metric definition. Search, facility status, inclusive PUE/WUE/CUE ranges, score ranges, and the Baseline Water Stress category all feed one filtered result set used by the KPI strip, map, table, comparison set, and exports. The portfolio table exposes PUE, WUE, and CUE separately and supports direct column sorting.
+
+Scoring methodology controls change the calculation context. Metric fallbacks, normalization anchors, WRI view, factor weights, and default ranking basis live in that workspace. Browser-side scenario changes recalculate the Composite Priority Score. Local-API assessment weights affect newly created Location Exposure scores; they do not rewrite scores stored in a published snapshot.
+
 ## Composite Priority Score
 
 The optional operating scenario preserves the original benchmark-gap logic while putting every component on a dimensionless 0–1 scale:
@@ -78,6 +84,8 @@ Composite Priority Score = 100 × (
 
 Default weights are 0.30 facility, 0.40 water, and 0.30 grid. User weights are normalised to total 1. PUE/WUE target and upper anchors are internal scenario values rather than external standards. Missing independent evidence blocks the composite; values are never silently treated as zero.
 
+Score direction is explicit: a higher Composite Priority Score represents greater intervention pressure. The score is not an efficiency rating. `Composite ≥ 80` therefore selects sites with larger combined facility gaps or environmental exposure under the active methodology.
+
 The Google demonstration uses directly matched 2026 Q1 PUE values for 27 public location rows. A conservative maximum is used when one public location maps to multiple reported facilities. Other Google rows use the 2025 fleet PUE of 1.09 as a visible proxy. The WUE default is Google's 2024 fleet value of 1.15 L/kWh for data centers supporting LLM models and is not represented as site-level evidence. Generic non-Google rows receive the same numeric defaults only as user scenario assumptions.
 
 ```text
@@ -86,7 +94,7 @@ CUE location proxy (kgCO2e/kWh IT) = PUE × grid factor (gCO2e/kWh) / 1000
 
 CUE is displayed and filterable without a direct composite weight. A CUE term alongside PUE and grid intensity would repeat the same energy and carbon drivers. Under the default Google proxies, both facility metrics fall below the intervention thresholds, which makes the default facility-gap component zero. Higher user assumptions or site inputs activate the component.
 
-Portfolio metric filters use inclusive bounds. For example, a PUE minimum of `1.50` retains locations with PUE greater than or equal to `1.50`. Map markers, dashboard summaries, table rows, comparisons, and exports are derived from the same filtered portfolio.
+Portfolio metric filters use inclusive bounds. For example, a PUE minimum of `1.50` retains locations with PUE greater than or equal to `1.50`. The water-level filter always reads the Baseline Water Stress category; Arid and Low Water Use and No Data remain selectable states rather than numeric zero. The WRI sensitivity view can change scoring and displayed evidence without changing that filter definition. Map markers, dashboard summaries, table rows, comparisons, and exports are derived from the same filtered portfolio. CSV exports retain every active numeric bound, the water-level filter, and the include-unscored setting as provenance.
 
 The score supports portfolio screening under explicit stakeholder weights. It is not an industry-standard sustainability rating. Decision review should retain the component values, active weights, evidence basis, hard water gate, and sensitivity results.
 

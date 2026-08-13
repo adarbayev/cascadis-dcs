@@ -6,6 +6,8 @@ export type SensitivityView = "bws" | "default" | "elp" | "smc";
 export type ApiWaterView = "baseline_water_stress" | "default_overall" | "electric_power" | "semiconductor";
 export type MapLayer = "water" | "carbon" | "recommendation";
 export type RankingMetric = "composite" | "exposure";
+export type DashboardTab = "overview" | "methodology";
+export type WaterStressFilter = "all" | "arid" | "extremely_high" | "high" | "medium_high" | "low_medium" | "low" | "no_data";
 
 export interface OperationalScenario {
   fallback_pue: number;
@@ -66,6 +68,7 @@ export interface PortfolioFilters {
   wue_max: number | null;
   cue_min: number | null;
   cue_max: number | null;
+  water_stress: WaterStressFilter;
   include_unscored: boolean;
 }
 

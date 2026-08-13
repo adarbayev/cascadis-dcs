@@ -59,6 +59,8 @@ describe("portfolio CSV ranking guard", () => {
         wue_max: 1.2,
         cue_min: 0.5,
         cue_max: 0.8,
+        water_stress: "high",
+        include_unscored: false,
       },
     });
     const [headerLine, rowLine] = csv.split("\n");
@@ -72,5 +74,7 @@ describe("portfolio CSV ranking guard", () => {
     expect(valueFor("wue_filter_max")).toBe("1.2");
     expect(valueFor("cue_filter_min")).toBe("0.5");
     expect(valueFor("cue_filter_max")).toBe("0.8");
+    expect(valueFor("water_stress_filter")).toBe("high");
+    expect(valueFor("include_unscored_filter")).toBe("false");
   });
 });

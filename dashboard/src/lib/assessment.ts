@@ -102,6 +102,24 @@ export function bwsCategory(result: AssessmentResult): number | null {
   return category === -9999 ? null : category;
 }
 
+export function waterCategory(result: AssessmentResult, view: SensitivityView): number | null {
+  const detail = result.policy_v1?.scores?.sensitivity?.[apiViewKey[view]];
+  if (detail?.status === "no_data" || detail?.status === "unavailable") return null;
+  const policyCategory = numeric(detail?.source_category);
+  if (policyCategory !== null) return policyCategory === -9999 ? null : policyCategory;
+
+  const source = waterSource(result);
+  const water = (source?.fields ?? source) as Record<string, unknown> | null;
+  const fields: Record<SensitivityView, string[]> = {
+    bws: ["bws_cat", "bws_category", "bws"],
+    default: ["w_awr_def_tot_cat", "default_overall_cat", "default_overall"],
+    elp: ["w_awr_elp_tot_cat", "electric_power_overall_cat", "electric_power_overall"],
+    smc: ["w_awr_smc_tot_cat", "semiconductor_overall_cat", "semiconductor_overall"],
+  };
+  const category = nestedNumber(water, fields[view]);
+  return category === -9999 ? null : category;
+}
+
 export function gridFactor(result: AssessmentResult): number | null {
   return nestedNumber(gridSource(result) as Record<string, unknown> | null, [
     "emissions_intensity_gco2_per_kwh",

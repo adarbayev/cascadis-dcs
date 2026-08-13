@@ -60,12 +60,20 @@ An Ember key is optional. With no key, the backend uses Ember's public yearly CS
 
 The WRI views stay separate. Baseline Water Stress drives the cooling matrix. Default, Electric Power, and Semiconductor scores support sensitivity analysis. WRI does not provide a Data Center preset.
 
+## Dashboard workspaces
+
+**Overview** is the portfolio-selection workspace. Search, status, PUE/WUE/CUE bounds, priority-score bounds, and the Baseline Water Stress selector reduce one shared result set. The KPI strip, map, sortable table, comparison set, and exports reconcile to that set. PUE, WUE, and CUE remain separate table columns with their units and evidence basis.
+
+**Scoring methodology** contains controls that change calculations: metric assumptions, normalization anchors, WRI view, factor weights, and the default ranking basis. The static GitHub Pages snapshot recalculates the Composite Priority Score in the browser. Location Exposure weights apply only when the local API creates a new assessment because published snapshot exposure scores are already calculated.
+
 ## Operating metrics and composite scenario
 
 The dashboard keeps two scores visible:
 
 - **Location Exposure Score**: the original WRI water and national grid-carbon screen.
 - **Composite Priority Score**: an editable scenario that adds a facility-efficiency benchmark gap.
+
+A higher Composite Priority Score indicates greater intervention pressure from facility gaps and environmental exposure. The value is not an efficiency performance rating; a filter such as `Composite ≥ 80` selects higher-priority sites.
 
 Default facility assumptions are taken from public Google evidence where a direct mapping is credible. CUE is derived as `PUE × grid factor / 1000` in `kgCO2e/kWh IT`. CUE remains filterable and receives no separate composite weight because PUE and grid carbon already appear in the calculation.
 
@@ -76,7 +84,7 @@ facility_gap = 0.5 × pue_gap + 0.5 × wue_gap
 composite = 100 × (0.30 × facility_gap + 0.40 × WRI/5 + 0.30 × grid/800)
 ```
 
-The anchors and weights are internal scenario settings. Published Google PUE/WUE proxies are currently below the internal intervention thresholds, so the default facility-gap contribution is zero; changing a scenario value above a threshold makes the facility term active. Filters support inclusive minimum and maximum bounds for exposure, composite score, PUE, WUE, and CUE. The same filtered set drives the map, summary, portfolio table, comparison queue, and exports.
+The anchors and weights are internal scenario settings. Published Google PUE/WUE proxies are currently below the internal intervention thresholds, so the default facility-gap contribution is zero; changing a scenario value above a threshold makes the facility term active. Overview filters support inclusive minimum and maximum bounds for exposure, composite score, PUE, WUE, and CUE. The water-level selector always uses Baseline Water Stress and preserves Arid and No Data as explicit states. Changing the WRI sensitivity view under Scoring methodology does not change that filter definition. The same filtered set drives the map, summary, portfolio table, comparison queue, and exports.
 
 ## CSV input
 

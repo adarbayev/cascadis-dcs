@@ -21,11 +21,11 @@ import { PortfolioMap } from "./components/PortfolioMap";
 import { PortfolioTable } from "./components/PortfolioTable";
 import { RecommendationPanel } from "./components/RecommendationPanel";
 import { OperationalProfilePanel } from "./components/OperationalProfilePanel";
-import { ScenarioControls } from "./components/ScenarioControls";
+import { OverviewFilters } from "./components/OverviewFilters";
+import { ScoringMethodology } from "./components/ScoringMethodology";
 import { SiteInputPanel } from "./components/SiteInputPanel";
 import { Notice } from "./components/Notice";
 import {
-  bwsCategory,
   apiViewKey,
   countryName,
   environmentalScore,
@@ -34,6 +34,7 @@ import {
   hasMixedGridBasis,
   hasPortfolioRankReversal,
   waterScore,
+  waterCategory,
 } from "./lib/assessment";
 import { downloadText, parseLocationCsv, rowsToCsv } from "./lib/csv";
 import { buildPortfolioCsv } from "./lib/portfolioExport";
@@ -46,6 +47,7 @@ import {
 } from "./lib/operationalScore";
 import type {
   AssessmentResult,
+  DashboardTab,
   DraftForm,
   LocationInput,
   MapLayer,
@@ -136,6 +138,7 @@ function sourceTone(status?: string): string {
 }
 
 function App() {
+  const [activeTab, setActiveTab] = useState<DashboardTab>("overview");
   const [form, setForm] = useState<DraftForm>(emptyForm);
   const [queued, setQueued] = useState<LocationInput[]>([]);
   const [results, setResults] = useState<AssessmentResult[]>([]);
@@ -295,7 +298,7 @@ function App() {
   const topComposite = !mixedGridBasis && compositeScores.length ? Math.max(...compositeScores) : null;
   const headlineScore = rankingMetric === "composite" ? topComposite : topScore;
   const highWater = visibleResults.filter((result) => {
-    const category = bwsCategory(result);
+    const category = waterCategory(result, "bws");
     return category === -1 || (category !== null && category >= 3);
   }).length;
   const highCarbon = visibleResults.filter((result) => {
@@ -422,12 +425,41 @@ function App() {
       </header>
 
       <main className="mx-auto max-w-[1640px] px-4 pb-10 pt-7 sm:px-6 lg:px-8">
+        <nav className="mb-7 flex gap-7 border-b atlas-rule" role="tablist" aria-label="Cascadis workspace">
+          <button
+            type="button"
+            role="tab"
+            id="overview-tab"
+            aria-controls="overview-panel"
+            aria-selected={activeTab === "overview"}
+            onClick={() => setActiveTab("overview")}
+            className="atlas-tab pb-3 text-sm font-semibold"
+            data-active={activeTab === "overview"}
+          >
+            Overview
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="methodology-tab"
+            aria-controls="methodology-panel"
+            aria-selected={activeTab === "methodology"}
+            onClick={() => setActiveTab("methodology")}
+            className="atlas-tab pb-3 text-sm font-semibold"
+            data-active={activeTab === "methodology"}
+          >
+            Scoring methodology
+          </button>
+        </nav>
+
+        {activeTab === "overview" ? (
+          <div id="overview-panel" role="tabpanel" aria-labelledby="overview-tab">
         <section className="border-y atlas-rule bg-paper/70" aria-label="Portfolio summary">
           <dl className="grid grid-cols-2 divide-x divide-y divide-ink/15 sm:grid-cols-4 sm:divide-y-0">
             {[
               { label: "Locations in view", value: portfolioLoading ? "—" : String(visibleResults.length), detail: `${fullCoverage} source-complete` },
               { label: rankingMetric === "composite" ? "Highest composite" : "Highest exposure", value: mixedGridBasis ? "N/A" : formatNumber(headlineScore, 0), detail: rankingMetric === "composite" ? "scenario priority / 100" : viewLabels[view].long },
-              { label: "Water gate", value: String(highWater), detail: "high, extreme, or arid" },
+              { label: "Water gate", value: String(highWater), detail: "BWS high, extreme, or arid" },
               { label: "Carbon attention", value: String(highCarbon), detail: "≥400 gCO₂e/kWh" },
             ].map(({ label, value, detail }) => (
               <div key={label} className="px-4 py-4 sm:px-5">
@@ -479,12 +511,11 @@ function App() {
                   <option value="announced">Announced</option>
                 </select>
               </label>
-              <label>
-                <span className="atlas-kicker block text-slate-500">Water view</span>
-                <select value={view} onChange={(event) => setView(event.target.value as SensitivityView)} className="mt-2 min-w-48 border-0 border-b border-ink/40 bg-transparent py-1.5 pr-8 text-sm font-semibold outline-none focus:border-tide">
-                  {(Object.keys(viewLabels) as SensitivityView[]).map((item) => <option key={item} value={item}>{viewLabels[item].long}</option>)}
-                </select>
-              </label>
+              <div>
+                <span className="atlas-kicker block text-slate-500">Active water basis</span>
+                <p className="mt-2 text-sm font-semibold text-ink">{viewLabels[view].long}</p>
+                <button type="button" onClick={() => setActiveTab("methodology")} className="mt-1 text-[10px] font-semibold text-tide underline underline-offset-4">Change methodology</button>
+              </div>
               <div>
                 <span className="atlas-kicker block text-slate-500">Map signal</span>
                 <div className="mt-1 flex gap-4" aria-label="Map layer selector">
@@ -493,16 +524,6 @@ function App() {
                   ))}
                 </div>
               </div>
-              {!isStaticMode ? <details className="group relative">
-                <summary className="cursor-pointer list-none border border-ink/30 px-3 py-2 text-xs font-semibold text-ink hover:border-ink">Weights {Math.round(weights.water * 100)} / {Math.round(weights.carbon * 100)}</summary>
-                <div className="absolute right-0 z-[500] mt-2 w-72 border border-ink bg-paper p-4 shadow-[8px_8px_0_rgba(20,33,29,0.12)]">
-                  <p className="atlas-kicker text-slate-500">Apply on next assessment</p>
-                  <div className="mt-4 space-y-4">
-                    <label className="grid grid-cols-[48px_1fr_36px] items-center gap-3 text-xs"><span>Water</span><input aria-label="Water weight" type="range" min="0" max="1" step="0.05" value={weights.water} onChange={(event) => { const water = Number(event.target.value); setWeights({ water, carbon: Number((1 - water).toFixed(2)) }); }} /><span className="atlas-marker-index text-right">{Math.round(weights.water * 100)}%</span></label>
-                    <label className="grid grid-cols-[48px_1fr_36px] items-center gap-3 text-xs"><span>Carbon</span><input aria-label="Carbon weight" type="range" min="0" max="1" step="0.05" value={weights.carbon} onChange={(event) => { const carbon = Number(event.target.value); setWeights({ carbon, water: Number((1 - carbon).toFixed(2)) }); }} /><span className="atlas-marker-index text-right">{Math.round(weights.carbon * 100)}%</span></label>
-                  </div>
-                </div>
-              </details> : null}
             </div>
           </div>
           <p className="mt-3 text-[11px] leading-5 text-slate-500">No official data-center preset. Electric Power and Semiconductor remain separate WRI sensitivity views.</p>
@@ -526,18 +547,12 @@ function App() {
           </div>
         ) : null}
 
-        <ScenarioControls
-          scenario={operationalScenario}
+        <OverviewFilters
           filters={portfolioFilters}
-          rankingMetric={rankingMetric}
-          onScenarioChange={setOperationalScenario}
-          onFiltersChange={setPortfolioFilters}
-          onRankingMetricChange={setRankingMetric}
-          onReset={() => {
-            setOperationalScenario(DEFAULT_OPERATIONAL_SCENARIO);
-            setPortfolioFilters(DEFAULT_PORTFOLIO_FILTERS);
-            setRankingMetric("composite");
-          }}
+          matchedCount={visibleResults.length}
+          totalCount={scopedResults.length}
+          onChange={setPortfolioFilters}
+          onReset={() => setPortfolioFilters(DEFAULT_PORTFOLIO_FILTERS)}
         />
 
         <section className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_390px]">
@@ -607,6 +622,29 @@ function App() {
             </div>
           </section>
         ) : null}
+
+          </div>
+        ) : (
+          <div id="methodology-panel" role="tabpanel" aria-labelledby="methodology-tab">
+            <ScoringMethodology
+            scenario={operationalScenario}
+            rankingMetric={rankingMetric}
+            waterView={view}
+            assessmentWeights={weights}
+            showAssessmentWeights={!isStaticMode}
+            onScenarioChange={setOperationalScenario}
+            onRankingMetricChange={setRankingMetric}
+            onWaterViewChange={setView}
+            onAssessmentWeightsChange={setWeights}
+            onReset={() => {
+              setOperationalScenario(DEFAULT_OPERATIONAL_SCENARIO);
+              setRankingMetric("composite");
+              setView("bws");
+              setWeights({ water: 0.5, carbon: 0.5 });
+            }}
+            />
+          </div>
+        )}
 
         <footer className="flex flex-col gap-3 py-6 text-xs leading-5 text-slate-500 sm:flex-row sm:items-center sm:justify-between">
           <p>Screening support only. Final cooling design requires engineering and commercial validation.</p>
