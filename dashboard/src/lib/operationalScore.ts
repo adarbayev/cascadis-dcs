@@ -30,8 +30,11 @@ export const DEFAULT_PORTFOLIO_FILTERS: PortfolioFilters = {
   exposure_max: 100,
   composite_min: 0,
   composite_max: 100,
+  pue_min: null,
   pue_max: null,
+  wue_min: null,
   wue_max: null,
+  cue_min: null,
   cue_max: null,
   include_unscored: true,
 };
@@ -169,8 +172,11 @@ export function profileMatchesFilters(
   if (profile.composite_score === null) {
     if (!filters.include_unscored || filters.composite_min > 0 || filters.composite_max < 100) return false;
   } else if (profile.composite_score < filters.composite_min || profile.composite_score > filters.composite_max) return false;
+  if (filters.pue_min !== null && (profile.pue.value === null || profile.pue.value < filters.pue_min)) return false;
   if (filters.pue_max !== null && (profile.pue.value === null || profile.pue.value > filters.pue_max)) return false;
+  if (filters.wue_min !== null && (profile.wue.value === null || profile.wue.value < filters.wue_min)) return false;
   if (filters.wue_max !== null && (profile.wue.value === null || profile.wue.value > filters.wue_max)) return false;
+  if (filters.cue_min !== null && (profile.cue.value === null || profile.cue.value < filters.cue_min)) return false;
   if (filters.cue_max !== null && (profile.cue.value === null || profile.cue.value > filters.cue_max)) return false;
   return true;
 }

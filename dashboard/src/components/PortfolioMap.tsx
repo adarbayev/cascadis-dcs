@@ -130,6 +130,10 @@ export function PortfolioMap({
     }
     return values;
   }, [results]);
+  const carbonSignature = useMemo(
+    () => [...carbonByIso3.entries()].sort(([first], [second]) => first.localeCompare(second)).map(([iso3, factor]) => `${iso3}:${factor}`).join("|"),
+    [carbonByIso3],
+  );
 
   const countryStyle = (country?: GeoFeature<Geometry>): PathOptions => {
     const iso3 = String(country?.properties?.iso3 ?? "");
@@ -155,6 +159,10 @@ export function PortfolioMap({
     }),
     [results],
   );
+  const basinSignature = useMemo(
+    () => basinFeatures.features.map((basin) => String(basin.properties?.id ?? "")).join("|"),
+    [basinFeatures],
+  );
 
   return (
     <div className="atlas-map relative h-[440px] overflow-hidden bg-[#d8ddd8] lg:h-[510px]">
@@ -175,12 +183,12 @@ export function PortfolioMap({
         <FitResults results={results} />
 
         {layer === "carbon" && carbonByIso3.size > 0 ? (
-          <GeoJSON key={`countries-${carbonByIso3.size}`} data={worldCountries} style={countryStyle} />
+          <GeoJSON key={`countries-${carbonSignature}`} data={worldCountries} style={countryStyle} />
         ) : null}
 
         {layer === "water" && basinFeatures.features.length > 0 ? (
           <GeoJSON
-            key={`basins-${basinFeatures.features.length}`}
+            key={`basins-${basinSignature}`}
             data={basinFeatures}
             style={{ color: "#2563a7", weight: 1.5, fillColor: "#4593c7", fillOpacity: 0.16 }}
           />

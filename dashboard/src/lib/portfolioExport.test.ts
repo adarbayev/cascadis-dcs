@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { assessmentFixture, googleLocationEvidence } from "../test/fixtures";
+import { DEFAULT_PORTFOLIO_FILTERS } from "./operationalScore";
 import { buildPortfolioCsv } from "./portfolioExport";
 
 function setPriority(result: ReturnType<typeof assessmentFixture>, value: number): void {
@@ -46,5 +47,30 @@ describe("portfolio CSV ranking guard", () => {
     expect(csv).toContain("portfolio_id,operator,facility_status,asset_scope");
     expect(csv).toContain("google_public_data_centers,Google,under_construction,google_public_data_center_location");
     expect(csv).toContain("locality_centroid,low,https://www.datacenters.google/locations/");
+  });
+
+  it("exports all active operational metric bounds", () => {
+    const csv = buildPortfolioCsv([assessmentFixture()], "bws", {
+      filters: {
+        ...DEFAULT_PORTFOLIO_FILTERS,
+        pue_min: 1.5,
+        pue_max: 1.8,
+        wue_min: 0.3,
+        wue_max: 1.2,
+        cue_min: 0.5,
+        cue_max: 0.8,
+      },
+    });
+    const [headerLine, rowLine] = csv.split("\n");
+    const headers = headerLine.split(",");
+    const row = rowLine.split(",");
+    const valueFor = (name: string) => row[headers.indexOf(name)];
+
+    expect(valueFor("pue_filter_min")).toBe("1.5");
+    expect(valueFor("pue_filter_max")).toBe("1.8");
+    expect(valueFor("wue_filter_min")).toBe("0.3");
+    expect(valueFor("wue_filter_max")).toBe("1.2");
+    expect(valueFor("cue_filter_min")).toBe("0.5");
+    expect(valueFor("cue_filter_max")).toBe("0.8");
   });
 });

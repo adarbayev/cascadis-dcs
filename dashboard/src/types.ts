@@ -60,8 +60,11 @@ export interface PortfolioFilters {
   exposure_max: number;
   composite_min: number;
   composite_max: number;
+  pue_min: number | null;
   pue_max: number | null;
+  wue_min: number | null;
   wue_max: number | null;
+  cue_min: number | null;
   cue_max: number | null;
   include_unscored: boolean;
 }
