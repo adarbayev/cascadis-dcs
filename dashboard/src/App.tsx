@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowUpRight,
   BookOpen,
@@ -17,7 +17,6 @@ import { createAssessment, getPolicy, getPortfolio, getSourceStatus, isStaticMod
 import { ComparisonPanel } from "./components/ComparisonPanel";
 import { DecisionInspector } from "./components/DecisionInspector";
 import { InfoDrawer } from "./components/InfoDrawer";
-import { PortfolioMap } from "./components/PortfolioMap";
 import { PortfolioTable } from "./components/PortfolioTable";
 import { RecommendationPanel } from "./components/RecommendationPanel";
 import { OperationalProfilePanel } from "./components/OperationalProfilePanel";
@@ -59,6 +58,10 @@ import type {
   SourceStatus,
 } from "./types";
 
+const PortfolioMap = lazy(() =>
+  import("./components/PortfolioMap").then((module) => ({ default: module.PortfolioMap })),
+);
+
 const emptyForm = (): DraftForm => ({
   id: "",
   name: "",
@@ -84,7 +87,13 @@ const viewLabels: Record<SensitivityView, { short: string; long: string }> = {
 const layerLabels: Record<MapLayer, string> = {
   water: "Water stress",
   carbon: "Grid carbon",
-  recommendation: "Recommendation",
+  recommendation: "Location exposure",
+};
+
+const layerHeadings: Record<MapLayer, string> = {
+  water: "Water risk by site",
+  carbon: "Grid carbon by location",
+  recommendation: "Location exposure by site",
 };
 
 function optionalMetric(value: string, label: string, rule: (number: number) => boolean, message: string): number | null {
@@ -555,28 +564,30 @@ function App() {
           onReset={() => setPortfolioFilters(DEFAULT_PORTFOLIO_FILTERS)}
         />
 
-        <section className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_390px]">
-          <div className="atlas-panel overflow-hidden">
+        <section className="mt-5 grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_390px]">
+          <div className="atlas-panel -mx-4 overflow-hidden sm:mx-0">
             <div className="flex flex-wrap items-end justify-between gap-4 border-b atlas-rule px-4 py-3 sm:px-5">
               <div>
-                <p className="atlas-kicker text-tide">Atlas plate / {mapLayer}</p>
-                <h2 className="mt-1 font-display text-2xl leading-none text-ink">Regional evidence map</h2>
+                <p className="atlas-kicker text-tide">Portfolio geography / {layerLabels[mapLayer]}</p>
+                <h2 className="mt-1 font-display text-2xl leading-none text-ink">{layerHeadings[mapLayer]}</h2>
               </div>
               <p className="max-w-md text-right text-[11px] leading-5 text-slate-500">{isStaticMode ? "Published snapshot. Select a marker to read the decision desk." : "Click the map to begin a new assessment. Select a marker to read the decision desk."}</p>
             </div>
-            <PortfolioMap
-              results={visibleResults}
-              selectedId={selectedId}
-              onSelect={setSelectedId}
-              onMapClick={(latitude, longitude) => {
-                if (isStaticMode) return;
-                setForm((current) => ({ ...current, latitude: latitude.toFixed(6), longitude: longitude.toFixed(6) }));
-                setIntakeOpen(true);
-              }}
-              draftCoordinate={form.latitude && form.longitude && Number.isFinite(Number(form.latitude)) && Number.isFinite(Number(form.longitude)) ? { latitude: Number(form.latitude), longitude: Number(form.longitude) } : null}
-              layer={mapLayer}
-              view={view}
-            />
+            <Suspense fallback={<div className="atlas-map flex h-[440px] items-center justify-center bg-[#d8ddd8] lg:h-[clamp(500px,58vh,620px)]"><LoaderCircle aria-hidden="true" className="animate-spin text-tide" /><span className="ml-3 text-xs font-semibold text-slate-600">Loading portfolio map…</span></div>}>
+              <PortfolioMap
+                results={visibleResults}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                onMapClick={(latitude, longitude) => {
+                  if (isStaticMode) return;
+                  setForm((current) => ({ ...current, latitude: latitude.toFixed(6), longitude: longitude.toFixed(6) }));
+                  setIntakeOpen(true);
+                }}
+                draftCoordinate={form.latitude && form.longitude && Number.isFinite(Number(form.latitude)) && Number.isFinite(Number(form.longitude)) ? { latitude: Number(form.latitude), longitude: Number(form.longitude) } : null}
+                layer={mapLayer}
+                view={view}
+              />
+            </Suspense>
           </div>
           <DecisionInspector result={selected} view={view} onOpenEvidence={() => document.getElementById("selected-analysis")?.scrollIntoView({ behavior: "smooth", block: "start" })} />
         </section>

@@ -44,6 +44,12 @@ describe("dashboard shell", () => {
     expect(await screen.findByText("No locations assessed yet")).toBeInTheDocument();
   });
 
+  it("keeps the map card aligned to its own content instead of stretching to the decision desk", async () => {
+    render(<App />);
+    const map = await screen.findByTestId("portfolio-map");
+    expect(map.closest("section")).toHaveClass("items-start");
+  });
+
   it("separates overview filters from scoring methodology controls", async () => {
     const user = userEvent.setup();
     render(<App />);
