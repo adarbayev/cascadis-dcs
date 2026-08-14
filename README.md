@@ -142,7 +142,7 @@ Example request:
 ## Architecture
 
 - `backend/`: FastAPI, Pydantic, HTTPX, SQLite, providers, policy engine, tests
-- `dashboard/`: React, TypeScript, Vite, Tailwind, Leaflet, tests
+- `dashboard/`: React, TypeScript, Vite, Tailwind, Leaflet with a MapLibre vector-basemap layer, tests
 - `config/decision_policy.v1.json`: versioned score anchors, bands, cooling matrix, delivery actions
 - `config/operational_composite.v1.json`: versioned operating assumptions, anchors, weights, and composite formula
 - `dashboard/public/data/google-portfolio.2026-08-10.json`: pinned public-demo assessment snapshot
@@ -195,7 +195,7 @@ VITE_APP_MODE=static VITE_BASE_PATH=/cascadis-dcs/ npm --prefix dashboard run bu
 - Site inputs and assessment results are stored locally in SQLite at `DC_COOLING_DB_PATH`.
 - Coordinates are sent to the configured Esri endpoint for Aqueduct lookup. Site names and business inputs are not sent to Esri.
 - Ember receives an ISO3 country code, resolved from the Aqueduct feature. The public CSV fallback is downloaded without site coordinates.
-- OpenStreetMap receives normal map-tile requests from the browser.
+- OpenFreeMap receives normal style, vector-tile, font, and sprite requests from the browser. Its public service requires no API key and provides no SLA; the map retains visible OpenStreetMap-derived attribution.
 - The tool provides long-term screening evidence. Final cooling selection requires engineering review of temperature, humidity, available power, hydraulics, controls, and redundancy.
 - Ember is a national lifecycle generation-intensity proxy. Values are not IEA factors, regional grid-zone factors, or formal Scope 2 reporting factors.
 - For Google locations, Aqueduct is an external regional pre-screen and is not represented as a Google Water Risk Framework rating.

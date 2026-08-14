@@ -27,6 +27,15 @@ No IEA source values are distributed with this repository. The disabled adapter 
 
 The dashboard uses the `world-atlas` package, derived from [Natural Earth](https://www.naturalearthdata.com/), for simplified country geometry. Natural Earth data is in the public domain. Geometry supports visual context only and is not used to resolve or score a site.
 
+## OpenFreeMap basemap
+
+- Public service and terms: [OpenFreeMap](https://openfreemap.org/).
+- Integration: [OpenFreeMap Quick Start](https://openfreemap.org/quick_start/).
+- Rendering stack: [MapLibre GL JS](https://maplibre.org/maplibre-gl-js/docs/) inside the existing Leaflet map.
+- Map data: [OpenStreetMap contributors](https://www.openstreetmap.org/copyright), delivered through the OpenMapTiles schema.
+
+The dashboard uses OpenFreeMap's Positron vector style as geographic context. OpenFreeMap permits commercial use and requires no API key, but its public instance has no service-level agreement. A controlled deployment should pin and self-host a compatible style and tile archive. Basemap geometry is not used in water, carbon, operating-metric, or composite-score calculations.
+
 ## Google public data-center locations
 
 - Primary directory: [Google Data Center Locations](https://www.datacenters.google/locations/), checked 10 August 2026.

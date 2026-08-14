@@ -94,7 +94,6 @@ input[type="range"]::-moz-range-thumb {
     linear-gradient(90deg, rgba(20, 33, 29, 0.035) 1px, transparent 1px);
   background-size: 32px 32px;
 }
-.atlas-map .leaflet-tile-pane { filter: saturate(0.42) sepia(0.08) contrast(0.96) brightness(1.04); }
 .atlas-map .leaflet-control-zoom a {
   border: 0 !important;
   border-bottom: 1px solid rgba(20, 33, 29, 0.2) !important;
@@ -108,6 +107,7 @@ input[type="range"]::-moz-range-thumb {
 .leaflet-popup-tip { box-shadow: none; }
 .leaflet-popup-content { margin: 14px; }
 .leaflet-interactive { transition: fill-opacity 160ms ease, stroke-width 160ms ease; }
+.atlas-map .atlas-marker-selected { filter: drop-shadow(0 0 5px rgba(20, 33, 29, 0.7)); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
