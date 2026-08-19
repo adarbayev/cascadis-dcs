@@ -4,9 +4,19 @@ export type UptimeConstraint = "no_outage" | "maintenance_window" | "major_works
 export type GrowthRate = "stable" | "moderate" | "high";
 export type SensitivityView = "bws" | "default" | "elp" | "smc";
 export type ApiWaterView = "baseline_water_stress" | "default_overall" | "electric_power" | "semiconductor";
-export type MapLayer = "water" | "carbon" | "recommendation";
+export type LocationMapLayer = "water" | "carbon" | "recommendation";
+export type EemsMapLayer = "lifecycle" | "compliance" | "eems" | "energy";
+export type MapLayer = LocationMapLayer | EemsMapLayer;
 export type RankingMetric = "composite" | "exposure";
-export type DashboardTab = "overview" | "methodology";
+export type DashboardTab =
+  | "command"
+  | "sites"
+  | "compliance"
+  | "environment"
+  | "energy"
+  | "actions"
+  | "location"
+  | "methodology";
 export type WaterStressFilter = "all" | "arid" | "extremely_high" | "high" | "medium_high" | "low_medium" | "low" | "no_data";
 
 export interface OperationalScenario {

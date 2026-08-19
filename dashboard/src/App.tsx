@@ -24,6 +24,10 @@ import { OverviewFilters } from "./components/OverviewFilters";
 import { ScoringMethodology } from "./components/ScoringMethodology";
 import { SiteInputPanel } from "./components/SiteInputPanel";
 import { Notice } from "./components/Notice";
+import { buildEemsPortfolio } from "./eems";
+import { EemsCommandCenter } from "./eems/components/EemsCommandCenter";
+import { EemsRegisterView, type EemsRegisterKind } from "./eems/components/EemsRegisterView";
+import { SiteWorkspace } from "./eems/components/SiteWorkspace";
 import {
   apiViewKey,
   countryName,
@@ -49,6 +53,7 @@ import type {
   DashboardTab,
   DraftForm,
   LocationInput,
+  LocationMapLayer,
   MapLayer,
   OperationalScenario,
   PolicyDocument,
@@ -84,17 +89,28 @@ const viewLabels: Record<SensitivityView, { short: string; long: string }> = {
   smc: { short: "Semiconductor", long: "Semiconductor proxy" },
 };
 
-const layerLabels: Record<MapLayer, string> = {
+const layerLabels: Record<LocationMapLayer, string> = {
   water: "Water stress",
   carbon: "Grid carbon",
   recommendation: "Location exposure",
 };
 
-const layerHeadings: Record<MapLayer, string> = {
+const layerHeadings: Record<LocationMapLayer, string> = {
   water: "Water risk by site",
   carbon: "Grid carbon by location",
   recommendation: "Location exposure by site",
 };
+
+const workspaceTabs: Array<{ id: DashboardTab; label: string }> = [
+  { id: "command", label: "Command center" },
+  { id: "sites", label: "Sites" },
+  { id: "compliance", label: "Compliance" },
+  { id: "environment", label: "Environmental" },
+  { id: "energy", label: "Energy" },
+  { id: "actions", label: "Actions" },
+  { id: "location", label: "Location intelligence" },
+  { id: "methodology", label: "Scoring" },
+];
 
 function optionalMetric(value: string, label: string, rule: (number: number) => boolean, message: string): number | null {
   if (!value.trim()) return null;
@@ -147,14 +163,15 @@ function sourceTone(status?: string): string {
 }
 
 function App() {
-  const [activeTab, setActiveTab] = useState<DashboardTab>("overview");
+  const [activeTab, setActiveTab] = useState<DashboardTab>("command");
   const [form, setForm] = useState<DraftForm>(emptyForm);
   const [queued, setQueued] = useState<LocationInput[]>([]);
   const [results, setResults] = useState<AssessmentResult[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [view, setView] = useState<SensitivityView>("bws");
-  const [mapLayer, setMapLayer] = useState<MapLayer>("recommendation");
+  const [mapLayer, setMapLayer] = useState<LocationMapLayer>("recommendation");
+  const [eemsMapLayer, setEemsMapLayer] = useState<MapLayer>("eems");
   const [weights, setWeights] = useState({ water: 0.5, carbon: 0.5 });
   const [portfolioScope, setPortfolioScope] = useState<"google" | "all" | "other">("all");
   const [portfolioQuery, setPortfolioQuery] = useState("");
@@ -251,6 +268,12 @@ function App() {
   const operationalProfiles = useMemo(() => new Map(
     scopedResults.map((result) => [result.assessment_id, buildOperationalProfile(result, operationalScenario, view)]),
   ), [operationalScenario, scopedResults, view]);
+
+  const eemsProfiles = useMemo(() => buildEemsPortfolio(scopedResults), [scopedResults]);
+  const selectedEemsProfile = useMemo(
+    () => eemsProfiles.find((profile) => profile.assessmentId === selectedId) ?? null,
+    [eemsProfiles, selectedId],
+  );
 
   const visibleResults = useMemo(() => {
     const query = portfolioQuery.trim().toLowerCase();
@@ -396,11 +419,20 @@ function App() {
     downloadText("cascadis-location-ranking.csv", buildPortfolioCsv(visibleResults, view, { profiles: operationalProfiles, rankingMetric, scenario: operationalScenario, filters: portfolioFilters, snapshotAt: isStaticMode ? sourceStatus[0]?.checked_at : undefined }), "text/csv;charset=utf-8");
   };
 
+  const openSiteWorkspace = (assessmentId: string) => {
+    setSelectedId(assessmentId);
+    setActiveTab("sites");
+  };
+
+  const openRegisterSite = (assessmentId: string) => {
+    setSelectedId(assessmentId);
+  };
+
   return (
-    <div className="atlas-grid min-h-screen text-ink">
+    <div className="atlas-grid min-h-screen overflow-x-clip text-ink">
       <div className="border-b border-white/10 bg-ink px-4 py-2 text-white sm:px-6 lg:px-8">
         <div className="mx-auto flex max-w-[1640px] items-center justify-between gap-4">
-          <p className="atlas-kicker text-white/60">Cascadis · independent sustainability decision support</p>
+          <p className="atlas-kicker text-white/60">Cascadis EEMS · portfolio management workspace</p>
           <div className="hidden items-center gap-4 md:flex">
             {sourceStatus.length ? sourceStatus.slice(0, 3).map((source, index) => (
               <span key={source.id ?? source.provider ?? index} className="flex items-center gap-2 text-[11px] text-white/70">
@@ -418,15 +450,15 @@ function App() {
           <div className="flex items-center gap-4">
             <span className="flex h-12 w-12 items-center justify-center border border-ink bg-signal text-ink"><Leaf size={21} strokeWidth={1.8} /></span>
             <div>
-              <p className="atlas-kicker text-tide">DCSS · Data Center Sustainability Scoring</p>
+              <p className="atlas-kicker text-tide">CASCADIS · Campus Assurance, Sustainability, Compliance and Data-center Intelligence System</p>
               <h1 className="mt-1 font-display text-[2.4rem] font-semibold leading-none tracking-[-0.035em] text-ink">Cascadis</h1>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-            <p className="max-w-md text-xs leading-5 text-slate-600">Location screening for water exposure, grid carbon, cooling options, and delivery constraints.</p>
+            <p className="max-w-md text-xs leading-5 text-slate-600">Environmental and energy management for data-center portfolios, from development through operations.</p>
             <nav className="flex items-center gap-4" aria-label="Reference panels">
               <button type="button" onClick={() => setDrawer("methodology")} className="flex items-center gap-2 border-b border-ink/30 py-1 text-xs font-semibold hover:border-ink"><BookOpen size={14} /> Method</button>
-              <button type="button" onClick={() => setDrawer("sources")} className="flex items-center gap-2 border-b border-ink/30 py-1 text-xs font-semibold hover:border-ink"><Database size={14} /> Sources</button>
+              <button type="button" onClick={() => setDrawer("sources")} className="flex items-center gap-2 border-b border-ink/30 py-1 text-xs font-semibold hover:border-ink"><Database size={14} /> Data notes</button>
               {isStaticMode ? <span className="border border-ink/30 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">Published snapshot</span> : <button type="button" onClick={() => setIntakeOpen(true)} className="flex items-center gap-2 border border-ink bg-ink px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-tide"><Plus size={15} /> Add location</button>}
             </nav>
           </div>
@@ -434,35 +466,111 @@ function App() {
       </header>
 
       <main className="mx-auto max-w-[1640px] px-4 pb-10 pt-7 sm:px-6 lg:px-8">
-        <nav className="mb-7 flex gap-7 border-b atlas-rule" role="tablist" aria-label="Cascadis workspace">
-          <button
-            type="button"
-            role="tab"
-            id="overview-tab"
-            aria-controls="overview-panel"
-            aria-selected={activeTab === "overview"}
-            onClick={() => setActiveTab("overview")}
-            className="atlas-tab pb-3 text-sm font-semibold"
-            data-active={activeTab === "overview"}
-          >
-            Overview
-          </button>
-          <button
-            type="button"
-            role="tab"
-            id="methodology-tab"
-            aria-controls="methodology-panel"
-            aria-selected={activeTab === "methodology"}
-            onClick={() => setActiveTab("methodology")}
-            className="atlas-tab pb-3 text-sm font-semibold"
-            data-active={activeTab === "methodology"}
-          >
-            Scoring methodology
-          </button>
+        <nav className="mb-7 overflow-x-auto border-b atlas-rule" role="tablist" aria-label="Cascadis workspace">
+          <div className="flex min-w-max gap-7">
+            {workspaceTabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                id={`${tab.id}-tab`}
+                aria-controls={`${tab.id}-panel`}
+                aria-selected={activeTab === tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className="atlas-tab pb-3 text-sm font-semibold"
+                data-active={activeTab === tab.id}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </nav>
 
-        {activeTab === "overview" ? (
-          <div id="overview-panel" role="tabpanel" aria-labelledby="overview-tab">
+        {activeTab === "command" ? (
+          <div id="command-panel" role="tabpanel" aria-labelledby="command-tab">
+            {portfolioLoading ? (
+              <div className="atlas-panel flex min-h-52 items-center justify-center">
+                <LoaderCircle className="animate-spin text-tide" />
+                <span className="ml-3 text-sm font-semibold text-slate-500">Loading management portfolio…</span>
+              </div>
+            ) : (
+              <EemsCommandCenter
+                results={scopedResults}
+                profiles={eemsProfiles}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                onOpenSite={openSiteWorkspace}
+                mapNode={(
+                  <div className="bg-paper">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b atlas-rule px-4 py-3 sm:px-5">
+                      <div>
+                        <p className="atlas-kicker text-tide">Portfolio geography</p>
+                        <p className="mt-1 text-xs text-slate-500">Select a marker to place the site in management context.</p>
+                      </div>
+                      <div className="flex flex-wrap gap-4" aria-label="Management map layer selector">
+                        {([
+                          ["eems", "EEMS stage"],
+                          ["lifecycle", "Lifecycle"],
+                          ["compliance", "Compliance"],
+                          ["energy", "Energy"],
+                        ] as Array<[MapLayer, string]>).map(([layer, label]) => (
+                          <button key={layer} type="button" onClick={() => setEemsMapLayer(layer)} aria-pressed={eemsMapLayer === layer} className="atlas-tab text-xs font-semibold" data-active={eemsMapLayer === layer}>
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <Suspense fallback={<div className="atlas-map flex h-[440px] items-center justify-center bg-[#d8ddd8]"><LoaderCircle aria-hidden="true" className="animate-spin text-tide" /><span className="ml-3 text-xs font-semibold text-slate-600">Loading portfolio map…</span></div>}>
+                      <PortfolioMap
+                        results={scopedResults}
+                        selectedId={selectedId}
+                        onSelect={setSelectedId}
+                        onMapClick={() => undefined}
+                        draftCoordinate={null}
+                        layer={eemsMapLayer}
+                        view={view}
+                        eemsProfiles={eemsProfiles}
+                      />
+                    </Suspense>
+                  </div>
+                )}
+              />
+            )}
+          </div>
+        ) : activeTab === "sites" ? (
+          <div id="sites-panel" role="tabpanel" aria-labelledby="sites-tab" className="space-y-4">
+            <section className="flex flex-col gap-3 border-y atlas-rule bg-paper/70 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+              <div>
+                <p className="atlas-kicker text-tide">Site record</p>
+                <p className="mt-1 text-xs text-slate-500">Open a workspace to review lifecycle, responsibilities, controls and performance.</p>
+              </div>
+              <label className="flex min-w-0 items-center gap-3 text-xs font-semibold text-slate-600 sm:min-w-[360px]">
+                <span className="shrink-0">Select site</span>
+                <select
+                  value={selectedId ?? ""}
+                  onChange={(event) => setSelectedId(event.target.value || null)}
+                  className="min-w-0 flex-1 border border-ink/25 bg-paper px-3 py-2.5 text-xs font-semibold text-ink"
+                >
+                  <option value="">Choose a site</option>
+                  {eemsProfiles.map((profile) => <option key={profile.id} value={profile.assessmentId}>{profile.name}</option>)}
+                </select>
+              </label>
+            </section>
+            <SiteWorkspace profile={selectedEemsProfile} onClose={() => setActiveTab("command")} />
+          </div>
+        ) : (["compliance", "environment", "energy", "actions"] as DashboardTab[]).includes(activeTab) ? (
+          <div id={`${activeTab}-panel`} role="tabpanel" aria-labelledby={`${activeTab}-tab`}>
+            <EemsRegisterView
+              key={activeTab}
+              profiles={eemsProfiles}
+              initialRegister={activeTab as EemsRegisterKind}
+              showRegisterNav={false}
+              onSelect={openRegisterSite}
+              onOpenSite={openSiteWorkspace}
+            />
+          </div>
+        ) : activeTab === "location" ? (
+          <div id="location-panel" role="tabpanel" aria-labelledby="location-tab">
         <section className="border-y atlas-rule bg-paper/70" aria-label="Portfolio summary">
           <dl className="grid grid-cols-2 divide-x divide-y divide-ink/15 sm:grid-cols-4 sm:divide-y-0">
             {[
@@ -528,7 +636,7 @@ function App() {
               <div>
                 <span className="atlas-kicker block text-slate-500">Map signal</span>
                 <div className="mt-1 flex gap-4" aria-label="Map layer selector">
-                  {(Object.keys(layerLabels) as MapLayer[]).map((layer) => (
+                  {(Object.keys(layerLabels) as LocationMapLayer[]).map((layer) => (
                     <button key={layer} type="button" onClick={() => setMapLayer(layer)} className="atlas-tab text-xs font-semibold" data-active={mapLayer === layer}>{layerLabels[layer]}</button>
                   ))}
                 </div>
@@ -658,8 +766,8 @@ function App() {
         )}
 
         <footer className="flex flex-col gap-3 py-6 text-xs leading-5 text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-          <p>Screening support only. Final cooling design requires engineering and commercial validation.</p>
-          <p className="flex items-center gap-2"><CheckCircle2 size={14} className="text-tide" /> Policy {policy?.version ?? "version unavailable"} · {isStaticMode ? "published snapshot" : "data refreshed per assessment"}</p>
+          <p>{activeTab === "location" || activeTab === "methodology" ? "Location intelligence supports screening; final cooling design requires engineering and commercial validation." : "Operational workspace records are working planning records and await site-owner confirmation."}</p>
+          <p className="flex items-center gap-2"><CheckCircle2 size={14} className="text-tide" /> {activeTab === "location" || activeTab === "methodology" ? `Policy ${policy?.version ?? "version unavailable"}` : `${eemsProfiles.length} site workspaces`} · {isStaticMode ? "published workspace" : "connected workspace"}</p>
         </footer>
       </main>
 

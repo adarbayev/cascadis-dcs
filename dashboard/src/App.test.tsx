@@ -5,7 +5,10 @@ import App from "./App";
 import { assessmentFixture, googleLocationEvidence } from "./test/fixtures";
 
 vi.mock("./components/PortfolioMap", () => ({
-  PortfolioMap: ({ results }: { results: Array<{ assessment_id: string; site: { name: string } }> }) => (
+  PortfolioMap: ({ results }: {
+    results: Array<{ assessment_id: string; site: { name: string } }>;
+    [key: string]: unknown;
+  }) => (
     <div data-count={results.length} data-testid="portfolio-map">
       {results.map((result) => <span key={result.assessment_id}>{result.site.name}</span>)}
     </div>
@@ -29,9 +32,18 @@ describe("dashboard shell", () => {
     }));
   });
 
-  it("renders an honest empty state and source-backed framing", async () => {
+  it("renders the EEMS command center by default", async () => {
     render(<App />);
     expect(screen.getByRole("heading", { name: /cascadis/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Command center" })).toHaveAttribute("aria-selected", "true");
+    expect(await screen.findByRole("heading", { name: "Portfolio command center" })).toBeInTheDocument();
+    expect(await screen.findByTestId("portfolio-map")).toBeInTheDocument();
+  });
+
+  it("keeps the location-intelligence empty state and source-backed framing", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("tab", { name: "Location intelligence" }));
     expect(await screen.findByText("No locations assessed yet")).toBeInTheDocument();
     expect(screen.getByText(/No official data-center preset/i)).toBeInTheDocument();
     expect(screen.getByTestId("portfolio-map")).toBeInTheDocument();
@@ -39,13 +51,17 @@ describe("dashboard shell", () => {
 
   it("uses the Cascadis product hierarchy", async () => {
     render(<App />);
-    expect(screen.getByRole("heading", { name: "Cascadis" })).toBeInTheDocument();
-    expect(screen.getByText(/DCSS · Data Center Sustainability Scoring/i)).toBeInTheDocument();
-    expect(await screen.findByText("No locations assessed yet")).toBeInTheDocument();
+    const productHeading = screen.getByRole("heading", { name: "Cascadis" });
+    expect(productHeading).toBeInTheDocument();
+    expect(productHeading.closest(".atlas-grid")).toHaveClass("overflow-x-clip");
+    expect(screen.getByText("CASCADIS · Campus Assurance, Sustainability, Compliance and Data-center Intelligence System")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Portfolio command center" })).toBeInTheDocument();
   });
 
   it("keeps the map card aligned to its own content instead of stretching to the decision desk", async () => {
+    const user = userEvent.setup();
     render(<App />);
+    await user.click(screen.getByRole("tab", { name: "Location intelligence" }));
     const map = await screen.findByTestId("portfolio-map");
     expect(map.closest("section")).toHaveClass("items-start");
   });
@@ -53,19 +69,20 @@ describe("dashboard shell", () => {
   it("separates overview filters from scoring methodology controls", async () => {
     const user = userEvent.setup();
     render(<App />);
-    expect(await screen.findByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
+    await user.click(screen.getByRole("tab", { name: "Location intelligence" }));
+    expect(screen.getByRole("tab", { name: "Location intelligence" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByLabelText("PUE minimum")).toBeInTheDocument();
     expect(screen.getByTestId("portfolio-map")).toBeInTheDocument();
     expect(screen.queryByLabelText("Fallback PUE")).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("tab", { name: "Scoring methodology" }));
-    expect(screen.getByRole("tab", { name: "Scoring methodology" })).toHaveAttribute("aria-selected", "true");
+    await user.click(screen.getByRole("tab", { name: "Scoring" }));
+    expect(screen.getByRole("tab", { name: "Scoring" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByLabelText("Fallback PUE")).toBeInTheDocument();
     expect(screen.getByLabelText("WRI water view")).toBeInTheDocument();
     expect(screen.queryByLabelText("PUE minimum")).not.toBeInTheDocument();
     expect(screen.queryByTestId("portfolio-map")).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("tab", { name: "Overview" }));
+    await user.click(screen.getByRole("tab", { name: "Location intelligence" }));
     expect(screen.getByLabelText("PUE minimum")).toBeInTheDocument();
     expect(screen.getByTestId("portfolio-map")).toBeInTheDocument();
   });
@@ -73,6 +90,7 @@ describe("dashboard shell", () => {
   it("queues a validated manual site without fabricating a result", async () => {
     const user = userEvent.setup();
     render(<App />);
+    await user.click(screen.getByRole("tab", { name: "Location intelligence" }));
     await waitFor(() => expect(screen.getByText("No locations assessed yet")).toBeInTheDocument());
     await user.click(screen.getByRole("button", { name: /Add location/i }));
     await user.type(screen.getByLabelText(/Site name/i), "London candidate");
@@ -107,7 +125,9 @@ describe("dashboard shell", () => {
       return jsonResponse({ detail: "Not found" }, 404);
     }));
 
+    const user = userEvent.setup();
     render(<App />);
+    await user.click(screen.getByRole("tab", { name: "Location intelligence" }));
     expect(await screen.findByText("Portfolio ranking blocked")).toBeInTheDocument();
     const highestPriority = screen.getByText("Highest composite");
     expect(within(highestPriority.parentElement!).getByText("N/A")).toBeInTheDocument();
@@ -126,7 +146,9 @@ describe("dashboard shell", () => {
       return jsonResponse({ detail: "Not found" }, 404);
     }));
 
+    const user = userEvent.setup();
     render(<App />);
+    await user.click(screen.getByRole("tab", { name: "Location intelligence" }));
     expect(await screen.findByText("Google public-location screening portfolio")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Google public locations 1/i })).toHaveAttribute("data-active", "true");
     expect(screen.getAllByText("Mesa, Arizona").length).toBeGreaterThan(0);
@@ -150,6 +172,7 @@ describe("dashboard shell", () => {
 
     const user = userEvent.setup();
     render(<App />);
+    await user.click(screen.getByRole("tab", { name: "Location intelligence" }));
     const map = await screen.findByTestId("portfolio-map");
     await waitFor(() => expect(map).toHaveAttribute("data-count", "3"));
     await user.type(screen.getByLabelText("PUE minimum"), "1.5");
@@ -182,6 +205,7 @@ describe("dashboard shell", () => {
 
     const user = userEvent.setup();
     render(<App />);
+    await user.click(screen.getByRole("tab", { name: "Location intelligence" }));
     const map = await screen.findByTestId("portfolio-map");
     await waitFor(() => expect(map).toHaveAttribute("data-count", "2"));
     await user.selectOptions(screen.getByLabelText("Baseline water stress level"), "extremely_high");
@@ -190,5 +214,60 @@ describe("dashboard shell", () => {
     expect(within(map).getByText("Extreme water")).toBeInTheDocument();
     expect(within(map).queryByText("Low water")).not.toBeInTheDocument();
     expect(screen.queryAllByText("Low water")).toHaveLength(0);
+  });
+
+  it("opens a selected command-center site in the Sites workspace", async () => {
+    const dublin = assessmentFixture({ assessment_id: "snapshot-dublin" });
+    dublin.site = {
+      ...dublin.site,
+      id: "google-dc-irl-dublin-ireland",
+      name: "Dublin, Ireland",
+      location_evidence: googleLocationEvidence,
+    };
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/portfolio")) return jsonResponse({ count: 1, assessments: [dublin] });
+      if (url.endsWith("/sources/status")) return jsonResponse({ checked_at: "2026-08-19T12:00:00Z", sources: [] });
+      if (url.endsWith("/policy")) return jsonResponse({ version: "1.0.0", default_weights: { water: 0.5, carbon: 0.5 }, anchors: { carbon_gco2e_per_kwh: 800 } });
+      return jsonResponse({ detail: "Not found" }, 404);
+    }));
+
+    const user = userEvent.setup();
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "Portfolio command center" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Dublin, Ireland/i }));
+    await user.click(screen.getByRole("button", { name: "Open selected site workspace" }));
+
+    expect(screen.getByRole("tab", { name: "Sites" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("heading", { name: "Dublin, Ireland" })).toBeInTheDocument();
+    expect(screen.getByText("Direct operational control")).toBeInTheDocument();
+  });
+
+  it("shows the Compliance and Energy portfolio registers", async () => {
+    const dublin = assessmentFixture({ assessment_id: "snapshot-dublin" });
+    dublin.site = {
+      ...dublin.site,
+      id: "google-dc-irl-dublin-ireland",
+      name: "Dublin, Ireland",
+      location_evidence: googleLocationEvidence,
+    };
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/portfolio")) return jsonResponse({ count: 1, assessments: [dublin] });
+      if (url.endsWith("/sources/status")) return jsonResponse({ checked_at: "2026-08-19T12:00:00Z", sources: [] });
+      if (url.endsWith("/policy")) return jsonResponse({ version: "1.0.0", default_weights: { water: 0.5, carbon: 0.5 }, anchors: { carbon_gco2e_per_kwh: 800 } });
+      return jsonResponse({ detail: "Not found" }, 404);
+    }));
+
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("tab", { name: "Compliance" }));
+    expect(await screen.findByRole("heading", { name: "Compliance & permits" })).toBeInTheDocument();
+    expect(screen.getByText("Backup generation air emissions authorisation")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Energy" }));
+    expect(screen.getByRole("heading", { name: "Energy & utilities" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: /PUE/i })).toBeInTheDocument();
+    expect(screen.getByText("1.25")).toBeInTheDocument();
   });
 });

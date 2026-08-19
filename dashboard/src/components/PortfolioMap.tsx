@@ -8,7 +8,8 @@ import type { GeometryCollection, Topology } from "topojson-specification";
 import { CircleMarker, GeoJSON, MapContainer, Popup, useMap, useMapEvents } from "react-leaflet";
 import countries110m from "world-atlas/countries-110m.json";
 import countryRecords from "world-countries";
-import type { AssessmentResult, MapLayer, SensitivityView } from "../types";
+import type { SiteEemsProfile } from "../eems/types";
+import type { AssessmentResult, EemsMapLayer, MapLayer, SensitivityView } from "../types";
 import {
   bwsCategory,
   countryIso3,
@@ -24,6 +25,7 @@ import {
 
 interface PortfolioMapProps {
   results: AssessmentResult[];
+  eemsProfiles?: SiteEemsProfile[] | Map<string, SiteEemsProfile>;
   selectedId: string | null;
   onSelect: (id: string) => void;
   onMapClick: (latitude: number, longitude: number) => void;
@@ -69,7 +71,7 @@ const palette = {
   unscored: "#7b8b87",
 };
 
-export const OPENFREEMAP_STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
+export const OPENFREEMAP_STYLE_URL = import.meta.env.VITE_MAP_STYLE_URL || "https://tiles.openfreemap.org/styles/positron";
 export const OPENFREEMAP_ATTRIBUTION =
   '<a href="https://openfreemap.org" target="_blank" rel="noreferrer">OpenFreeMap</a> · <a href="https://www.openmaptiles.org/" target="_blank" rel="noreferrer">&copy; OpenMapTiles</a> · Data from <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>';
 
@@ -85,6 +87,10 @@ const signalLabels: Record<MapLayer, string> = {
   recommendation: "Location exposure",
   water: "Water stress",
   carbon: "Grid carbon",
+  lifecycle: "Lifecycle phase",
+  compliance: "Compliance status",
+  eems: "EEMS implementation",
+  energy: "Energy performance",
 };
 
 const waterViewLabels: Record<SensitivityView, string> = {
@@ -121,6 +127,72 @@ const carbonLegend: LegendItem[] = [
   { label: "Moderate", threshold: "150–399", colour: palette.moderate },
   { label: "Critical", threshold: "≥400", colour: palette.critical },
   { label: "No data", threshold: "", colour: palette.unscored },
+];
+
+const lifecycleColours: Record<SiteEemsProfile["lifecycle"]["primaryPhase"], string> = {
+  planning: "#64748b",
+  permitting: "#7c3aed",
+  construction: "#e76f24",
+  commissioning: "#d99b1f",
+  operational: palette.lower,
+  expansion: "#2563a7",
+  decommissioning: palette.critical,
+};
+
+const lifecycleLegend: LegendItem[] = [
+  { label: "Planning", threshold: "", colour: lifecycleColours.planning },
+  { label: "Permitting", threshold: "", colour: lifecycleColours.permitting },
+  { label: "Construction", threshold: "", colour: lifecycleColours.construction },
+  { label: "Commissioning", threshold: "", colour: lifecycleColours.commissioning },
+  { label: "Operational", threshold: "", colour: lifecycleColours.operational },
+  { label: "Expansion", threshold: "", colour: lifecycleColours.expansion },
+  { label: "Decommissioning", threshold: "", colour: lifecycleColours.decommissioning },
+  { label: "Record unavailable", threshold: "", colour: palette.unscored },
+];
+
+const complianceColours: Record<SiteEemsProfile["status"]["compliance"], string> = {
+  not_assessed: palette.unscored,
+  active: palette.lower,
+  due_soon: palette.moderate,
+  expired: palette.critical,
+  review_required: palette.high,
+};
+
+const complianceLegend: LegendItem[] = [
+  { label: "Active", threshold: "", colour: complianceColours.active },
+  { label: "Due soon", threshold: "", colour: complianceColours.due_soon },
+  { label: "Review required", threshold: "", colour: complianceColours.review_required },
+  { label: "Expired", threshold: "", colour: complianceColours.expired },
+  { label: "Not assessed", threshold: "", colour: complianceColours.not_assessed },
+];
+
+const eemsColours: Record<SiteEemsProfile["status"]["eemsStage"], string> = {
+  not_onboarded: palette.unscored,
+  gap_assessment: palette.moderate,
+  controls_design: "#2563a7",
+  implementation: "#7c3aed",
+  operating: palette.lower,
+  assurance: "#0e7490",
+};
+
+const eemsLegend: LegendItem[] = [
+  { label: "Not onboarded", threshold: "", colour: eemsColours.not_onboarded },
+  { label: "Gap assessment", threshold: "", colour: eemsColours.gap_assessment },
+  { label: "Controls design", threshold: "", colour: eemsColours.controls_design },
+  { label: "Implementation", threshold: "", colour: eemsColours.implementation },
+  { label: "Operating", threshold: "", colour: eemsColours.operating },
+  { label: "Assurance", threshold: "", colour: eemsColours.assurance },
+];
+
+const energyTargetColour = "#2563a7";
+
+const energyLegend: LegendItem[] = [
+  { label: "Lower overhead", threshold: "PUE ≤1.20", colour: palette.lower },
+  { label: "Moderate overhead", threshold: "1.21–1.35", colour: palette.moderate },
+  { label: "Elevated overhead", threshold: "1.36–1.50", colour: palette.high },
+  { label: "High overhead", threshold: "PUE >1.50", colour: palette.critical },
+  { label: "Target / design", threshold: "", colour: energyTargetColour },
+  { label: "Not recorded", threshold: "", colour: palette.unscored },
 ];
 
 function OpenFreeMapLayer({ onStatusChange }: { onStatusChange: (status: BasemapStatus) => void }) {
@@ -199,10 +271,117 @@ function carbonColour(factor: number | null): string {
   return palette.lower;
 }
 
-function markerColour(result: AssessmentResult, layer: MapLayer, view: SensitivityView): string {
+function isEemsLayer(layer: MapLayer): layer is EemsMapLayer {
+  return layer === "lifecycle" || layer === "compliance" || layer === "eems" || layer === "energy";
+}
+
+function energyColour(profile: SiteEemsProfile | undefined): string {
+  const pue = profile?.metrics.pue;
+  if (!pue || pue.value === null || pue.kind === "not_available" || pue.kind === "not_applicable") {
+    return palette.unscored;
+  }
+  if (pue.kind === "target") return energyTargetColour;
+  if (pue.value > 1.5) return palette.critical;
+  if (pue.value > 1.35) return palette.high;
+  if (pue.value > 1.2) return palette.moderate;
+  return palette.lower;
+}
+
+function eemsMarkerColour(profile: SiteEemsProfile | undefined, layer: EemsMapLayer): string {
+  if (!profile) return palette.unscored;
+  if (layer === "lifecycle") return lifecycleColours[profile.lifecycle.primaryPhase];
+  if (layer === "compliance") return complianceColours[profile.status.compliance];
+  if (layer === "eems") return eemsColours[profile.status.eemsStage];
+  return energyColour(profile);
+}
+
+function markerColour(
+  result: AssessmentResult,
+  layer: MapLayer,
+  view: SensitivityView,
+  profile?: SiteEemsProfile,
+): string {
   if (layer === "water") return waterColour(result, view);
   if (layer === "carbon") return carbonColour(gridFactor(result));
+  if (isEemsLayer(layer)) return eemsMarkerColour(profile, layer);
   return palette[priorityBand(environmentalScore(result, view))];
+}
+
+function workingLabel(value: string): string {
+  return value.replaceAll("_", " ").replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function workingMetric(profile: SiteEemsProfile, key: "pue" | "wueLPerKwh" | "cueKgCo2ePerKwh", digits = 2): string {
+  const metric = profile.metrics[key];
+  if (metric.value === null) return "Not recorded";
+  const value = new Intl.NumberFormat("en-GB", { maximumFractionDigits: digits }).format(metric.value);
+  return `${value}${metric.unit === "ratio" ? "" : ` ${metric.unit}`}`;
+}
+
+function EemsPopup({ profile, result }: { profile?: SiteEemsProfile; result: AssessmentResult }) {
+  if (!profile) {
+    return (
+      <div className="min-w-[230px] font-sans">
+        <p className="atlas-kicker text-tide">Working site record</p>
+        <p className="mt-2 font-display text-xl leading-tight text-ink">{result.site.name}</p>
+        <p className="mt-3 text-xs leading-5 text-slate-600">EEMS record has not been connected for this mapped location.</p>
+      </div>
+    );
+  }
+
+  const primaryFlag = profile.status.flags[0] ?? "No management flag recorded";
+  const pueKind = profile.metrics.pue.kind === "actual"
+    ? "Current period"
+    : workingLabel(profile.metrics.pue.kind);
+
+  return (
+    <div className="min-w-[250px] font-sans">
+      <p className="atlas-kicker text-tide">Working site record</p>
+      <p className="mt-2 font-display text-xl leading-tight text-ink">{profile.name}</p>
+      <p className="mt-1 text-xs text-slate-500">
+        {profile.location.countryName} · {profile.lifecycle.concurrentPhases.length
+          ? `${workingLabel(profile.lifecycle.primaryPhase)} + ${profile.lifecycle.concurrentPhases.map(workingLabel).join(", ")}`
+          : workingLabel(profile.lifecycle.primaryPhase)}
+      </p>
+
+      <dl className="mt-3 divide-y divide-ink/10 border-y border-ink/15 text-xs">
+        <div className="grid grid-cols-[92px_1fr] gap-3 py-2">
+          <dt className="text-slate-400">Operating model</dt>
+          <dd className="font-medium text-ink">{profile.operatingModel.label}</dd>
+        </div>
+        <div className="grid grid-cols-[92px_1fr] gap-3 py-2">
+          <dt className="text-slate-400">EEMS stage</dt>
+          <dd className="font-medium text-ink">{workingLabel(profile.status.eemsStage)}</dd>
+        </div>
+        <div className="grid grid-cols-[92px_1fr] gap-3 py-2">
+          <dt className="text-slate-400">Compliance</dt>
+          <dd className="font-medium text-ink">{workingLabel(profile.status.compliance)}</dd>
+        </div>
+        <div className="grid grid-cols-[92px_1fr] gap-3 py-2">
+          <dt className="text-slate-400">Action health</dt>
+          <dd className="font-medium text-ink">{workingLabel(profile.status.actionHealth)}</dd>
+        </div>
+      </dl>
+
+      <div className="mt-3 grid grid-cols-3 divide-x divide-ink/15 border-y border-ink/15">
+        <div className="py-2 pr-2">
+          <p className="atlas-kicker text-slate-400">PUE</p>
+          <p className="atlas-marker-index mt-1 font-semibold text-ink">{workingMetric(profile, "pue")}</p>
+        </div>
+        <div className="px-2 py-2">
+          <p className="atlas-kicker text-slate-400">WUE</p>
+          <p className="atlas-marker-index mt-1 font-semibold text-ink">{workingMetric(profile, "wueLPerKwh")}</p>
+        </div>
+        <div className="py-2 pl-2">
+          <p className="atlas-kicker text-slate-400">CUE</p>
+          <p className="atlas-marker-index mt-1 font-semibold text-ink">{workingMetric(profile, "cueKgCo2ePerKwh", 3)}</p>
+        </div>
+      </div>
+      <p className="mt-2 text-[10px] text-slate-400">{profile.metrics.period} · PUE {pueKind}</p>
+      <p className="mt-3 text-xs font-medium leading-5 text-slate-600">{primaryFlag}</p>
+      <p className="mt-2 text-[10px] text-slate-400">{profile.recordReview.label}</p>
+    </div>
+  );
 }
 
 function MapClickHandler({ onMapClick }: Pick<PortfolioMapProps, "onMapClick">) {
@@ -236,6 +415,7 @@ function FitResults({ results }: { results: AssessmentResult[] }) {
 
 export function PortfolioMap({
   results,
+  eemsProfiles,
   selectedId,
   onSelect,
   onMapClick,
@@ -244,6 +424,11 @@ export function PortfolioMap({
   view,
 }: PortfolioMapProps) {
   const [basemapStatus, setBasemapStatus] = useState<BasemapStatus>("loading");
+  const eemsProfileBySiteId = useMemo(() => {
+    if (!eemsProfiles) return new Map<string, SiteEemsProfile>();
+    if (eemsProfiles instanceof Map) return eemsProfiles;
+    return new Map(eemsProfiles.map((profile) => [profile.siteId, profile]));
+  }, [eemsProfiles]);
   const carbonByIso3 = useMemo(() => {
     const values = new Map<string, number>();
     for (const result of results) {
@@ -288,20 +473,28 @@ export function PortfolioMap({
   );
 
   const signalLabel = layer === "water" && view !== "bws" ? waterViewLabels[view] : signalLabels[layer];
-  const legend =
-    layer === "water"
-      ? view === "bws"
+  const legend = (() => {
+    if (layer === "water") {
+      return view === "bws"
         ? [...waterLegend.slice(0, -1), aridReviewLegendItem, waterLegend.at(-1)!]
-        : waterLegend
-      : layer === "carbon"
-        ? carbonLegend
-        : exposureLegend;
-  const sourceBasis =
-    layer === "water"
-      ? `${waterViewLabels[view]} · WRI Aqueduct 4.0`
-      : layer === "carbon"
-        ? "National lifecycle generation intensity (gCO₂e/kWh) · Ember public proxy"
-        : `Exposure score (/100) · ${waterViewLabels[view]} + Ember public proxy`;
+        : waterLegend;
+    }
+    if (layer === "carbon") return carbonLegend;
+    if (layer === "recommendation") return exposureLegend;
+    if (layer === "lifecycle") return lifecycleLegend;
+    if (layer === "compliance") return complianceLegend;
+    if (layer === "eems") return eemsLegend;
+    return energyLegend;
+  })();
+  const sourceBasis = (() => {
+    if (layer === "water") return `${waterViewLabels[view]} · WRI Aqueduct 4.0`;
+    if (layer === "carbon") return "National lifecycle generation intensity (gCO₂e/kWh) · Ember public proxy";
+    if (layer === "recommendation") return `Exposure score (/100) · ${waterViewLabels[view]} + Ember public proxy`;
+    if (layer === "lifecycle") return "Working-record primary lifecycle phase and concurrent delivery status";
+    if (layer === "compliance") return "Working-record permit and obligation review status";
+    if (layer === "eems") return "Working-record implementation stage and action health";
+    return "Working-record PUE bands · target and design values are shown separately";
+  })();
 
   return (
     <div className="bg-[#d8ddd8]">
@@ -346,6 +539,7 @@ export function PortfolioMap({
           const score = environmentalScore(result, view);
           const water = waterLabel(result, view);
           const carbon = gridFactor(result);
+          const eemsProfile = eemsProfileBySiteId.get(result.site.id);
           const selected = result.assessment_id === selectedId;
           return (
             <CircleMarker
@@ -356,30 +550,34 @@ export function PortfolioMap({
                 className: selected ? "atlas-marker-selected" : undefined,
                 color: "#ffffff",
                 weight: 3,
-                fillColor: markerColour(result, layer, view),
+                fillColor: markerColour(result, layer, view, eemsProfile),
                 fillOpacity: 1,
               }}
               eventHandlers={{ click: () => onSelect(result.assessment_id) }}
             >
               <Popup>
-                <div className="min-w-[220px] font-sans">
-                  <p className="atlas-kicker text-tide">Mapped location</p>
-                  <p className="mt-2 font-display text-xl leading-tight text-ink">{result.site.name}</p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {countryName(result) ?? "Country unresolved"} · {result.site.latitude.toFixed(3)}, {result.site.longitude.toFixed(3)}
-                  </p>
-                  <div className="mt-3 grid grid-cols-2 divide-x divide-ink/15 border-y border-ink/15">
-                    <div className="py-2 pr-2">
-                      <p className="atlas-kicker text-slate-400">Exposure</p>
-                      <p className="atlas-marker-index mt-1 font-semibold text-ink">{formatNumber(score, 0)}</p>
+                {isEemsLayer(layer) ? (
+                  <EemsPopup profile={eemsProfile} result={result} />
+                ) : (
+                  <div className="min-w-[220px] font-sans">
+                    <p className="atlas-kicker text-tide">Mapped location</p>
+                    <p className="mt-2 font-display text-xl leading-tight text-ink">{result.site.name}</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {countryName(result) ?? "Country unresolved"} · {result.site.latitude.toFixed(3)}, {result.site.longitude.toFixed(3)}
+                    </p>
+                    <div className="mt-3 grid grid-cols-2 divide-x divide-ink/15 border-y border-ink/15">
+                      <div className="py-2 pr-2">
+                        <p className="atlas-kicker text-slate-400">Exposure</p>
+                        <p className="atlas-marker-index mt-1 font-semibold text-ink">{formatNumber(score, 0)}</p>
+                      </div>
+                      <div className="py-2 pl-2">
+                        <p className="atlas-kicker text-slate-400">Grid</p>
+                        <p className="atlas-marker-index mt-1 font-semibold text-ink">{carbon === null ? "N/A" : `${formatNumber(carbon, 0)} g`}</p>
+                      </div>
                     </div>
-                    <div className="py-2 pl-2">
-                      <p className="atlas-kicker text-slate-400">Grid</p>
-                      <p className="atlas-marker-index mt-1 font-semibold text-ink">{carbon === null ? "N/A" : `${formatNumber(carbon, 0)} g`}</p>
-                    </div>
+                    <p className="mt-3 text-xs font-medium text-slate-600">{water ?? "Water score unavailable"}</p>
                   </div>
-                  <p className="mt-3 text-xs font-medium text-slate-600">{water ?? "Water score unavailable"}</p>
-                </div>
+                )}
               </Popup>
             </CircleMarker>
           );

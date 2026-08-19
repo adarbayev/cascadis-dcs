@@ -24,7 +24,7 @@ Open `http://127.0.0.1:8000/docs` for the generated OpenAPI interface.
 Configuration can be placed in `.env` or `backend/.env`. See `.env.example`.
 An Ember API key is optional: the API is preferred when configured; the backend
 uses Ember's public yearly CSV when the key is absent or the API request fails.
-No synthetic grid factors are generated.
+Grid factors come from the configured provider; the backend does not generate fallback factors.
 
 ## API
 
