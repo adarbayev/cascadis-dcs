@@ -1,5 +1,15 @@
 # Methodology
 
+## Environmental and energy management layer
+
+CASCADIS uses a separate site-management overlay joined to location assessments through the stable site ID. The separation keeps workflow records independent from the water/grid scoring contract and supports future authenticated updates without changing historical location assessments.
+
+The overlay organises ISO 14001:2026 and ISO 50001:2018 management activities into portfolio command, site, compliance, environmental, energy and action workspaces. Records cover roles, lifecycle, permits, aspects and impacts, cooling assets, utilities, checklists, improvement actions, audits and management review. ISO describes both standards through a continual-improvement management-system structure; CASCADIS uses that structure as a workflow design reference and does not claim certification or conformity.
+
+Six detailed profiles provide lifecycle and operating-control patterns. Other sites begin at `gap_assessment` with unconfirmed responsibilities, empty registers and onboarding work. Missing records stay unknown and do not become compliant, zero consumption or completed work.
+
+Working management records await site-owner confirmation. The read-only Pages build does not provide evidence approval, attachments, notifications, durable edits or an immutable audit trail. Those controls belong in a connected EEMS service.
+
 ## Purpose
 
 Cascadis Data Center Sustainability Scoring (DCSS) is a screening and prioritisation tool. It combines long-term water-risk evidence with a national electricity-carbon proxy, then applies a separate and versioned decision policy. It does not replace climate, hydraulic, electrical, resilience, permitting, or detailed cooling-system engineering.
@@ -86,7 +96,7 @@ Default weights are 0.30 facility, 0.40 water, and 0.30 grid. User weights are n
 
 Score direction is explicit: a higher Composite Priority Score represents greater intervention pressure. The score is not an efficiency rating. `Composite ≥ 80` therefore selects sites with larger combined facility gaps or environmental exposure under the active methodology.
 
-The Google demonstration uses directly matched 2026 Q1 PUE values for 27 public location rows. A conservative maximum is used when one public location maps to multiple reported facilities. Other Google rows use the 2025 fleet PUE of 1.09 as a visible proxy. The WUE default is Google's 2024 fleet value of 1.15 L/kWh for data centers supporting LLM models and is not represented as site-level evidence. Generic non-Google rows receive the same numeric defaults only as user scenario assumptions.
+The published Google portfolio uses directly matched 2026 Q1 PUE values for 27 public location rows. A conservative maximum is used when one public location maps to multiple reported facilities. Other Google rows use the 2025 fleet PUE of 1.09 as a visible proxy. The WUE default is Google's 2024 fleet value of 1.15 L/kWh for data centers supporting LLM models and is not represented as site-level evidence. Generic non-Google rows receive the same numeric defaults only as user scenario assumptions.
 
 ```text
 CUE location proxy (kgCO2e/kWh IT) = PUE × grid factor (gCO2e/kWh) / 1000

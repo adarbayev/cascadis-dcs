@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export the reviewed Google assessment portfolio for the static Pages demo."""
+"""Export the reviewed Google assessment portfolio for the static Pages workspace."""
 
 from __future__ import annotations
 

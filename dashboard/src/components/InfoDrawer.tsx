@@ -16,12 +16,12 @@ export function InfoDrawer({ mode, onClose, policy, sourceStatus }: InfoDrawerPr
   const anchor = policy?.anchors?.carbon_gco2e_per_kwh ?? policy?.carbon_anchor_gco2e_per_kwh;
 
   return (
-    <div className="fixed inset-0 z-[1000] flex justify-end bg-ink/45" role="dialog" aria-modal="true" aria-label={mode === "methodology" ? "Methodology" : "Data sources"} onMouseDown={onClose}>
+    <div className="fixed inset-0 z-[1000] flex justify-end bg-ink/45" role="dialog" aria-modal="true" aria-label={mode === "methodology" ? "Methodology" : "Data notes"} onMouseDown={onClose}>
       <aside className="h-full w-full max-w-xl overflow-y-auto border-l border-ink bg-paper p-6 shadow-lift sm:p-8" onMouseDown={(event) => event.stopPropagation()}>
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="atlas-kicker text-tide">Reference record</p>
-            <h2 className="mt-2 font-display text-3xl text-ink">{mode === "methodology" ? "Methodology" : "Data sources"}</h2>
+            <h2 className="mt-2 font-display text-3xl text-ink">{mode === "methodology" ? "Methodology" : "Data notes"}</h2>
           </div>
           <button type="button" onClick={onClose} className="border border-ink/25 p-2 text-slate-500 hover:border-ink hover:text-ink" aria-label="Close panel"><X size={18} /></button>
         </div>
@@ -69,6 +69,10 @@ export function InfoDrawer({ mode, onClose, policy, sourceStatus }: InfoDrawerPr
           </div>
         ) : (
           <div className="mt-8 space-y-6">
+            <section className="border border-ink/20 bg-[#f1efe7] p-4">
+              <h3 className="text-sm font-bold text-ink">Management workspace records</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">Site workspaces are working planning records. Lifecycle, responsibility, permit, cooling, utility and action entries remain subject to site-owner confirmation before operational use.</p>
+            </section>
             <section>
               <div className="flex items-center gap-2 text-sm font-bold text-ink"><Database size={17} className="text-forest-600" /> Provider configuration</div>
               <div className="mt-3 space-y-2">

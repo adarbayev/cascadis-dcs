@@ -1,10 +1,27 @@
-# Cascadis — Data Center Sustainability Scoring
+# CASCADIS EEMS — Data Center Environmental & Energy Management
 
-**Cascadis** is the umbrella product name. **DCSS** means **Data Center Sustainability Scoring**. The current workspace provides location screening using WRI Aqueduct water risk, an Ember country-level grid-carbon proxy, and explicit cost, uptime, and growth constraints.
+**CASCADIS** means **Campus Assurance, Sustainability, Compliance and Data-center Intelligence System**. The product combines environmental and energy management workspaces with the existing Data Center Sustainability Scoring location-intelligence module.
 
-The product is independent public-data decision support. It is not a Google product and does not imply Google endorsement.
+The product is independent portfolio decision support. It is not a Google product and does not imply Google endorsement.
 
-The application is entirely in English. It supports map clicks, manual coordinates, CSV batches of up to 100 sites, portfolio ranking, cooling shortlists, phased delivery actions, and CSV/JSON exports.
+The application is entirely in English. The management workspace covers site lifecycle, operating responsibilities, permits, environmental aspects, energy and water performance, cooling assets, contributor checklists, actions and assurance. Location Intelligence continues to support map clicks, manual coordinates, CSV batches of up to 100 sites, portfolio ranking, cooling shortlists and exports.
+
+## Environmental and energy management workspace
+
+The primary navigation contains:
+
+- **Command center** — portfolio indicators, management-attention queue and EEMS map signals;
+- **Sites** — site lifecycle, ownership/control matrix, cooling register and detailed records;
+- **Compliance** — permits and obligations with holder, owner, review and due status;
+- **Environmental** — activity, aspect, impact, operating condition, control and residual risk;
+- **Energy** — facility electricity, IT electricity, water, PUE, WUE and CUE;
+- **Actions** — improvement work, contributor checklists, audits and follow-up;
+- **Location intelligence** — the original water/grid exposure and cooling-screening workflow;
+- **Scoring** — the calculation assumptions, sensitivity views, anchors and weights.
+
+Six detailed site archetypes illustrate owned mature operations, owned expansion, owned development, build-to-suit construction, colocation and partner-operated handover. Lifecycle and ownership remain separate, and every archetype includes a responsibility matrix for asset, facilities, IT, cooling, utilities, permits, data and action approval. Remaining portfolio sites enter the EEMS workflow at gap assessment.
+
+Operational workspace entries are working planning records and await site-owner confirmation before operational use. See [the EEMS product model](docs/EEMS_PRODUCT_MODEL.md) for the ISO workflow mapping, archetype definitions, market patterns and connected-system roadmap.
 
 ## Google public-location portfolio
 
@@ -23,11 +40,11 @@ The unit of analysis is a Google public **location**, which can contain more tha
 
 Project type, cost, uptime, and growth inputs are explicit tool scenarios. They are not Google disclosures. The portfolio view matches Google's 2026 Q1 PUE table to 27 public location rows. Unmatched rows use the visible, editable 2025 Google fleet PUE of 1.09. Site-level public WUE is unavailable; the default 1.15 L/kWh is an editable 2024 fleet proxy for data centers supporting LLM models. Every row shows whether a metric is operator-reported, a fleet proxy, a user assumption, or derived.
 
-## Public demo
+## Published dashboard
 
 The read-only GitHub Pages edition is published at:
 
-- `https://adarbayev.github.io/cascadis-dcs/`
+- <https://adarbayev.github.io/cascadis-dcs/>
 
 Pages serves a pinned 59-location snapshot. Score scenarios, filters, comparison, and exports run in the browser. New coordinate assessments remain in the local FastAPI edition because GitHub Pages cannot run the backend or SQLite database.
 
@@ -145,7 +162,7 @@ Example request:
 - `dashboard/`: React, TypeScript, Vite, Tailwind, Leaflet with a MapLibre vector-basemap layer, tests
 - `config/decision_policy.v1.json`: versioned score anchors, bands, cooling matrix, delivery actions
 - `config/operational_composite.v1.json`: versioned operating assumptions, anchors, weights, and composite formula
-- `dashboard/public/data/google-portfolio.2026-08-10.json`: pinned public-demo assessment snapshot
+- `dashboard/public/data/google-portfolio.2026-08-10.json`: pinned published assessment snapshot
 - `.github/workflows/pages.yml`: tested GitHub Pages deployment
 - `scripts/dev.py`: coordinated local launcher
 - `scripts/prepare_aqueduct.py`: reproducible path from the pinned official Aqueduct ZIP to a slim GeoPackage

@@ -1,5 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { EEMS_ARCHETYPE_PROFILES } from "../eems/profiles";
+import type { SiteEemsProfile } from "../eems/types";
 import { assessmentFixture } from "../test/fixtures";
 import type { MapLayer } from "../types";
 import { OPENFREEMAP_ATTRIBUTION, OPENFREEMAP_STYLE_URL, PortfolioMap } from "./PortfolioMap";
@@ -39,9 +41,10 @@ vi.mock("react-leaflet", async () => {
     MapContainer: ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) => (
       <div data-testid="map-container" aria-label={String(props["aria-label"] ?? "")}>{children}</div>
     ),
-    CircleMarker: ({ children }: React.PropsWithChildren<Record<string, unknown>>) => (
-      <div data-testid="map-marker">{children}</div>
-    ),
+    CircleMarker: ({ children, pathOptions }: React.PropsWithChildren<Record<string, unknown>>) => {
+      const options = pathOptions as { fillColor?: string } | undefined;
+      return <div data-testid="map-marker" data-fill-colour={options?.fillColor}>{children}</div>;
+    },
     GeoJSON: () => <div data-testid="map-geometry" />,
     Popup: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
     useMap: () => leafletMocks.map,
@@ -49,7 +52,10 @@ vi.mock("react-leaflet", async () => {
   };
 });
 
-function renderMap(layer: MapLayer = "recommendation") {
+function renderMap(
+  layer: MapLayer = "recommendation",
+  eemsProfiles?: SiteEemsProfile[] | Map<string, SiteEemsProfile>,
+) {
   const first = assessmentFixture({ assessment_id: "first" });
   first.site = { ...first.site, id: "first", name: "First visible site" };
   const second = assessmentFixture({ assessment_id: "second" });
@@ -58,6 +64,7 @@ function renderMap(layer: MapLayer = "recommendation") {
   render(
     <PortfolioMap
       results={[first, second]}
+      eemsProfiles={eemsProfiles}
       selectedId={null}
       onSelect={vi.fn()}
       onMapClick={vi.fn()}
@@ -127,5 +134,39 @@ describe("portfolio map evidence framing", () => {
     expect(markers).toHaveLength(2);
     expect(within(markers[0]).getByText("First visible site")).toBeInTheDocument();
     expect(within(markers[1]).getByText("Second visible site")).toBeInTheDocument();
+  });
+
+  it.each([
+    ["lifecycle", "Lifecycle phase", "Construction", "primary lifecycle phase"],
+    ["compliance", "Compliance status", "Review required", "permit and obligation"],
+    ["eems", "EEMS implementation", "Controls design", "implementation stage"],
+    ["energy", "Energy performance", "Lower overhead", "PUE bands"],
+  ] as const)("presents the %s working-record map mode", (layer, signal, legendItem, basis) => {
+    renderMap(layer);
+
+    expect(screen.getByText(signal)).toBeInTheDocument();
+    expect(within(screen.getByLabelText(`${signal} thresholds`)).getByText(legendItem)).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(basis, "i"))).toBeInTheDocument();
+  });
+
+  it("joins a working record by stable site id and exposes its management context", () => {
+    const profile: SiteEemsProfile = {
+      ...EEMS_ARCHETYPE_PROFILES[0],
+      assessmentId: "first",
+      siteId: "first",
+      name: "First working site",
+    };
+
+    renderMap("lifecycle", new Map([[profile.siteId, profile]]));
+
+    const markers = screen.getAllByTestId("map-marker");
+    expect(markers[0]).toHaveAttribute("data-fill-colour", "#2e8b78");
+    expect(within(markers[0]).getByText("First working site")).toBeInTheDocument();
+    expect(within(markers[0]).getByText(profile.operatingModel.label)).toBeInTheDocument();
+    expect(within(markers[0]).getByText("Verification Due")).toBeInTheDocument();
+    expect(within(markers[0]).getByText(profile.recordReview.label)).toBeInTheDocument();
+
+    expect(markers[1]).toHaveAttribute("data-fill-colour", "#7b8b87");
+    expect(within(markers[1]).getByText(/record has not been connected/i)).toBeInTheDocument();
   });
 });

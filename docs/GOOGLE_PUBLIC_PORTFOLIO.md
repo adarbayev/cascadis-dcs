@@ -13,7 +13,9 @@ Google's main location directory produced 59 raw entries. `Ellis County, Texas` 
 
 Google states that one listed location can include more than one physical site. The seed keeps one Aqueduct row per public location. Known multi-facility labels from Google's PUE reporting are retained as metadata for Central Ohio, Council Bluffs, Northern Virginia, Singapore, and The Dalles.
 
-Google Cloud regions, zones, network edge locations, third-party colocation capacity, and confidential parcels are excluded.
+Google Cloud regions, zones, network edge locations, third-party colocation capacity, and confidential parcels are excluded from the location-intelligence seed.
+
+The separate EEMS workspace maps six management archetypes onto selected site workspaces to exercise lifecycle and control-rights workflows. Those working records do not alter the public-location scope or establish the actual ownership, permit, cooling or operating model of a named location. Each record remains awaiting site-owner confirmation.
 
 ## Coordinate confidence
 
